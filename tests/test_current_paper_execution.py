@@ -220,3 +220,33 @@ def test_history_gap_is_diagnostic_but_explicit_router_ambiguity_is_excluded():
 def test_live_execution_mode_remains_impossible():
     with pytest.raises(ValueError):
         Settings(_env_file=None, execution_mode="live")
+
+
+class _BehindRpc(Rpc):
+    """The node answers -32016 until it catches up with the stream slot."""
+
+    def __init__(self, accounts, tx, behind: int):
+        super().__init__(accounts, tx)
+        self.behind = behind
+
+    async def _call(self, method, params):
+        if method == "getMultipleAccounts" and self.behind > 0:
+            self.behind -= 1
+            from memebot.providers.solana.rpc import SolanaRpcError
+
+            raise SolanaRpcError("rpc_-32016")
+        return await super()._call(method, params)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("behind,healthy", [(2, True), (100, False)])
+async def test_refresh_retries_briefly_while_rpc_is_behind_the_stream_slot(behind, healthy):
+    fresh, _ = await current_market()
+    _candidate, accounts, tx, _, _ = fixture()
+    market = replace(fresh, source_slot=101, rpc_state="degraded", execution_state=None)
+    result = await CurrentPaperMarketRefresher(
+        _BehindRpc(accounts, tx, behind), for_exit=True
+    ).refresh(market)
+    assert (result.rpc_state == "healthy") is healthy
+    if not healthy:
+        assert result.data_quality == "current_atomic_refresh_failed"

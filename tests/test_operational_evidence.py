@@ -72,7 +72,7 @@ def test_log_shape_event_cpi_accepts_only_the_strict_emit_shape():
     "logs",
     [
         _shape_logs(parent="Unrecognized"),
-        _shape_logs(parent="SellV3"),
+        _shape_logs(parent="MultiHopCurveSwap"),
         _shape_logs(events=2),
         _shape_logs(events=0),
         _shape_logs(child=["Program log: Instruction: Sell"]),
@@ -87,6 +87,20 @@ def test_log_shape_event_cpi_accepts_only_the_strict_emit_shape():
 )
 def test_log_shape_event_cpi_rejects_other_silent_frames(logs):
     assert _shaped(logs) == set()
+
+
+V3_ROWS = json.loads((Path(__file__).parent / "fixtures/pump_v3_trades.json").read_text())
+
+
+@pytest.mark.parametrize("index", range(len(V3_ROWS)))
+def test_real_v3_trades_are_ordinary_with_and_without_a_packet(index):
+    tx = V3_ROWS[index]
+    logs = tx["meta"]["logMessages"]
+    assert len(verified_event_cpi_frames(logs, tx)) == 1
+    for packet in (None, tx):
+        tracker = MarketStateTracker()
+        scope_native_mutations(logs, tracker, signature="x", slot=1, transaction=packet)
+        assert not any(r.reason == "UNKNOWN_NATIVE_INSTRUCTION" for r in tracker.invalidations)
 
 
 def test_log_shape_is_not_used_for_truncated_logs_or_with_a_packet():

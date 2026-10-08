@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 stream-research = ["grpcio>=1.84,<2", "protobuf>=7.35.1,<8"]
+charts = ["matplotlib>=3.9,<4"]
 dev = [
   "aiosqlite>=0.20,<1",
   "mypy>=1.14,<2",
@@ -61,7 +62,7 @@ mypy_path = "src"
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
-module = ["alembic.*"]
+module = ["alembic.*", "matplotlib", "matplotlib.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

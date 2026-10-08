@@ -21,10 +21,12 @@ from memebot.pulse.service import PulseService
 from memebot.storage.database.control import ControlRepository
 from memebot.storage.database.engine import Database, create_database_engine
 from memebot.storage.database.outcomes import OutcomeRecorder
+from memebot.storage.database.paper_history import PaperHistoryRepository
 from memebot.storage.database.pending import PendingPaperActionRepository
 from memebot.storage.database.registry import TokenRegistry
 from memebot.storage.database.wallets import WalletIntelligenceRepository
 from memebot.telegram.app import build_dispatcher
+from memebot.telegram.markers_server import start_markers_server
 from memebot.telegram.service import TelegramControlService
 
 
@@ -90,7 +92,16 @@ async def _run_telegram_bot(settings: Settings, *, run_seconds: float | None = N
     )
     bot = Bot(token=token)
     dispatcher = build_dispatcher(service, allowed_user_ids=settings.telegram_allowed_user_ids)
+    markers = None
     try:
+        if settings.chart_markers_port:
+            try:
+                markers = await start_markers_server(
+                    PaperHistoryRepository(database.sessions).chart_markers,
+                    settings.chart_markers_port,
+                )
+            except OSError as error:
+                logger.warning("chart_markers_unavailable", error_type=type(error).__name__)
         await database.healthcheck()
         await service.initialize()
         await bot.delete_webhook(drop_pending_updates=False)
@@ -129,6 +140,8 @@ async def _run_telegram_bot(settings: Settings, *, run_seconds: float | None = N
             except TimeoutError:
                 logger.info("telegram_bot_time_limit_reached", run_seconds=run_seconds)
     finally:
+        if markers is not None:
+            markers.close()
         await service.close()
         await rpc.close()
         await exit_rpc.close()

@@ -7,6 +7,7 @@ from time import monotonic
 from typing import Any
 
 from aiogram import Bot
+from aiogram.types import BufferedInputFile
 
 from memebot.core.logging import get_logger
 from memebot.events.models import (
@@ -38,11 +39,16 @@ class TelegramTradeNotifier:
         duplicate_cooldown_seconds: float = 60.0,
         event_notifications_enabled: bool = True,
         token_lookup: Callable[[str], Awaitable[dict[str, Any] | None]] | None = None,
+        chart_lookup: Callable[[str, str], Awaitable[tuple[bytes | None, str] | None]]
+        | None = None,
     ) -> None:
         self._bot = Bot(token=token)
         self._user_ids = user_ids
-        self._queue: asyncio.Queue[tuple[str | None, str]] = asyncio.Queue(maxsize=queue_size)
+        self._queue: asyncio.Queue[tuple[str | None, str, str | None]] = asyncio.Queue(
+            maxsize=queue_size
+        )
         self._token_lookup = token_lookup
+        self._chart_lookup = chart_lookup
         self._minimum_interval = minimum_interval_seconds
         self._duplicate_cooldown = duplicate_cooldown_seconds
         self._event_notifications_enabled = event_notifications_enabled
@@ -71,14 +77,21 @@ class TelegramTradeNotifier:
         if previous is not None and now - previous < self._duplicate_cooldown:
             return
         self._recent[dedupe_key] = now
-        self._enqueue(message, getattr(event, "mint", None))
+        chart = (
+            str(event.portfolio_id)
+            if isinstance(event, PaperOrderCompleted)
+            and event.result.fill is not None
+            and event.result.position_effect.value == "close"
+            else None
+        )
+        self._enqueue(message, getattr(event, "mint", None), chart)
 
     def enqueue_text(self, message: str) -> None:
         self._enqueue(message, None)
 
-    def _enqueue(self, message: str, mint: str | None) -> None:
+    def _enqueue(self, message: str, mint: str | None, chart: str | None = None) -> None:
         try:
-            self._queue.put_nowait((mint, message))
+            self._queue.put_nowait((mint, message, chart))
         except asyncio.QueueFull:
             self._logger.warning("telegram_notification_queue_full")
 
@@ -91,8 +104,18 @@ class TelegramTradeNotifier:
 
     async def _run(self) -> None:
         while True:
-            mint, message = await self._queue.get()
+            mint, message, chart = await self._queue.get()
             try:
+                photo = None
+                if chart and mint and self._chart_lookup:
+                    try:
+                        rendered = await asyncio.wait_for(self._chart_lookup(chart, mint), 10)
+                    except Exception:
+                        rendered = None
+                    if rendered is not None:
+                        # The trade card replaces the plain fill text on a full close.
+                        photo, message = rendered
+                        mint = None
                 if mint and self._token_lookup:
                     try:
                         info = await asyncio.wait_for(self._token_lookup(mint), timeout=2)
@@ -105,7 +128,14 @@ class TelegramTradeNotifier:
                     message += "\n\n" + coin_links(mint)
                 for user_id in self._user_ids:
                     try:
-                        await self._bot.send_message(user_id, message)
+                        if photo is not None:
+                            await self._bot.send_photo(
+                                user_id,
+                                BufferedInputFile(photo, filename="trade.png"),
+                                caption=message[:1024],
+                            )
+                        else:
+                            await self._bot.send_message(user_id, message)
                     except Exception as error:
                         self._logger.warning(
                             "telegram_notification_failed",

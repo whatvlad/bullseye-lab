@@ -290,6 +290,9 @@ class MarketStateTracker:
         self.invalidations: deque[InvalidationRecord] = deque(maxlen=capacity)
         self.config_generation: dict[str, int] = {}
         self.invalidation_revisions: dict[str, int] = {}
+        # Signature of the latest reserve invalidation per market, so a trade event
+        # never re-anchors on a transaction that itself carried the uncertainty.
+        self.invalidation_signatures: dict[str, str | None] = {}
 
     def invalidate(
         self,
@@ -363,6 +366,11 @@ class MarketStateTracker:
                 continue
             if previous is not None and dimensions:
                 self.invalidation_revisions[key] = self.invalidation_revisions.get(key, 0) + 1
+            if "reserves" in dimensions:
+                self.invalidation_signatures.pop(key, None)
+                self.invalidation_signatures[key] = signature
+                if len(self.invalidation_signatures) > self.capacity:
+                    self.invalidation_signatures.pop(next(iter(self.invalidation_signatures)))
             if previous is not None:
                 updates: dict[str, object] = (
                     {"invalidation_scope": actual_scope.value, "invalidation_reason": reason}
@@ -470,6 +478,23 @@ class MarketStateTracker:
                         "reason": "older_or_missing_slot",
                     }
                 )
+            if (
+                not isinstance(event, PumpSwapTrade)
+                and not multi_event_unknown
+                and previous.observational_price is None
+                and self.invalidation_signatures.get(state.market) != signature
+            ):
+                # A single Pump TradeEvent carries the program's exact post-trade
+                # reserves, so observation re-anchors on it. Integer continuity is
+                # checked again from here; execution still requires an RPC refresh.
+                self.states[state.market] = state.model_copy(
+                    update={
+                        "reason": "reanchored_on_native_trade_event",
+                        "events_since_reconciliation": previous.events_since_reconciliation + 1,
+                        "reconciled_at": previous.reconciled_at,
+                    }
+                )
+                return self.states[state.market]
             delta: dict[str, int] = {}
             if isinstance(event, PumpSwapTrade):
                 pairs = [

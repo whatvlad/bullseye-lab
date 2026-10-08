@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Bullseye chart markers",
+  "version": "0.1.0",
+  "description": "Draws the local Bullseye bot's paper buys and sells on pump.fun, GMGN, Axiom, Padre and Dexscreener charts.",
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://pump.fun/*",
+        "https://gmgn.ai/*",
+        "https://axiom.trade/*",
+        "https://trade.padre.gg/*",
+        "https://dexscreener.com/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://pump.fun/*",
+        "https://gmgn.ai/*",
+        "https://axiom.trade/*",
+        "https://trade.padre.gg/*",
+        "https://dexscreener.com/*"
+      ],
+      "js": ["inject.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ]
+}

@@ -28,6 +28,7 @@ class CoinGeckoQuotePriceProvider:
         *,
         timeout_seconds: float = 10,
         cache_seconds: float = 20,
+        retry_after_failure_seconds: float = 15,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._endpoint = f"{base_url.rstrip('/')}/simple/price"
@@ -36,6 +37,8 @@ class CoinGeckoQuotePriceProvider:
         )
         self._cache_seconds = cache_seconds
         self._cached_at = 0.0
+        self._failed_at = float("-inf")
+        self._retry_after_failure_seconds = retry_after_failure_seconds
         self._cache: dict[str, QuotePrice] = {}
 
     async def quote_price(self, portfolio_currency: str) -> QuotePrice:
@@ -46,7 +49,17 @@ class CoinGeckoQuotePriceProvider:
         cached = self._cache.get(currency)
         if cached is not None and now - self._cached_at <= self._cache_seconds:
             return cached
-        await self._refresh()
+        if cached is not None and now - self._failed_at < self._retry_after_failure_seconds:
+            return cached
+        try:
+            await self._refresh()
+        except QuotePriceError:
+            # The keyless endpoint rate-limits. Keep the last good price; execution
+            # enforces its own maximum quote age from the provenance timestamp.
+            self._failed_at = monotonic()
+            if cached is None:
+                raise
+            return cached
         result = self._cache.get(currency)
         if result is None:
             raise QuotePriceError("quote_price_unavailable")

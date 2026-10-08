@@ -112,6 +112,8 @@ class Settings(BaseSettings):
     telegram_notification_queue_size: int = Field(default=200, ge=10, le=5000)
     telegram_notification_minimum_interval_seconds: float = Field(default=1.0, ge=0.1, le=60)
     telegram_notification_duplicate_cooldown_seconds: float = Field(default=60.0, ge=0, le=3600)
+    # Loopback port for the chart-markers browser extension; 0 disables it.
+    chart_markers_port: int = Field(default=8765, ge=0, le=65535)
     x_bearer_token: SecretStr | None = None
 
     ollama_base_url: AnyHttpUrl = AnyHttpUrl("http://localhost:11434")

@@ -95,6 +95,16 @@ def build_dispatcher(
                     caption="Вся история PAPER: positions.csv — позиции и PnL; "
                     "orders.csv — исполнения и отклонённые заявки.",
                 )
+        elif len(parts) == 3 and parts[1] == "chart" and isinstance(query.message, Message):
+            card = await service.position_card(parts[2])
+            if card is None:
+                await query.message.answer("Позиция не найдена.")
+            elif card[0] is None:
+                await query.message.answer(card[1], parse_mode=None)
+            else:
+                await query.message.answer_photo(
+                    BufferedInputFile(card[0], filename="trade.png"), caption=card[1][:1024]
+                )
         elif len(parts) == 3 and parts[1] == "page" and parts[2].isdigit():
             payload = await service.paper_history(int(parts[2]))
             await _edit(query, history_view(payload), history_keyboard(payload))

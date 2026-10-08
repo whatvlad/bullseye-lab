@@ -81,6 +81,45 @@ def test_pumpfun_post_and_multi_event_unknown():
     assert state.quote_reserve is None
 
 
+def _pump(**kwargs):
+    return replace(
+        PumpTrade("mint", 50, 100, True, "user", 1, 900, 650, 800, 550, "quote"), **kwargs
+    )
+
+
+def test_pumpfun_trade_reanchors_after_invalidation_from_another_transaction():
+    tracker = MarketStateTracker()
+    observe(tracker, _pump())
+    tracker.invalidate("pool", "UNKNOWN_NATIVE_INSTRUCTION", signature="other")
+    state = observe(tracker, _pump(virtual_token_reserves=850), slot=2, signature="next")
+    assert state.continuity_status == "FIRST_OBSERVATION"
+    assert state.reason == "reanchored_on_native_trade_event"
+    assert state.invalidation_reason is None
+    assert state.observational_price == Decimal(650) / 850
+    # Execution trust is not restored by an observation.
+    assert state.state_quality == StateStatus.INCOMPLETE
+    assert not state.execution_identity_verified
+
+
+def test_pumpfun_trade_does_not_reanchor_on_its_own_uncertain_transaction():
+    tracker = MarketStateTracker()
+    observe(tracker, _pump())
+    tracker.invalidate("pool", "UNKNOWN_NATIVE_INSTRUCTION", signature="same")
+    chained = _pump(
+        virtual_quote_reserves=700,
+        virtual_token_reserves=800,
+        real_quote_reserves=600,
+        real_token_reserves=700,
+    )
+    state = observe(tracker, chained, slot=2, signature="same")
+    assert state.continuity_status == "UNKNOWN"
+    assert state.observational_price is None
+    state = tracker.observe(
+        _pump(), market="pool", slot=3, signature="later", ordinal=0, multi_event_unknown=True
+    )
+    assert state.continuity_status == "UNKNOWN"
+
+
 def test_exact_same_transaction_order_and_missing_mutation_diverge():
     tracker = MarketStateTracker()
     observe(tracker, swap())

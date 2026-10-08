@@ -24,6 +24,11 @@ ORDINARY = {
     "BuyV2",
     "SellV2",
     "BuyExactQuoteInV2",
+    # Not in the pinned IDL. Live V3 trades emit one standard TradeEvent plus the
+    # emit-CPI, write no config account, and chain integer reserves exactly.
+    "BuyV3",
+    "SellV3",
+    "BuyExactQuoteInV3",
 }
 _INVOKE = re.compile(r"^Program (\S+) invoke \[(\d+)]$")
 _RETURN = re.compile(r"^Program (\S+) (?:success|failed:)")

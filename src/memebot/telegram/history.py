@@ -14,7 +14,12 @@ def coin_identity(mint: str, info: dict[str, Any] | None = None) -> str:
 
 
 def coin_links(mint: str) -> str:
-    return f"https://solscan.io/token/{mint}\nhttps://dexscreener.com/solana/{mint}"
+    return (
+        f"https://dexscreener.com/solana/{mint}\n"
+        f"https://pump.fun/coin/{mint}\n"
+        f"https://gmgn.ai/sol/token/{mint}\n"
+        f"https://solscan.io/token/{mint}"
+    )
 
 
 def position_card(item: dict[str, Any]) -> str:
@@ -110,9 +115,14 @@ def detail_keyboard(payload: dict[str, Any]) -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="Solscan", url=f"https://solscan.io/token/{item['mint']}"),
             InlineKeyboardButton(
-                text="График", url=f"https://dexscreener.com/solana/{item['mint']}"
+                text="Dexscreener", url=f"https://dexscreener.com/solana/{item['mint']}"
             ),
-        ]
+        ],
+        [
+            InlineKeyboardButton(
+                text="📈 График сделки (вход/выход)", callback_data=f"history:chart:{item['id']}"
+            )
+        ],
     ]
     rows += _pages(payload, f"history:coin:{item['id']}")
     rows += [[InlineKeyboardButton(text="⬅️ Вся история", callback_data="history:page:0")]]

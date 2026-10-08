@@ -89,6 +89,12 @@ class TelegramControlService:
     ) -> dict[str, Any] | None:
         return await self._registry.paper_position_history(position_id, page)
 
+    async def position_card(self, position_id: str) -> tuple[bytes | None, str] | None:
+        from memebot.storage.database.paper_history import PaperHistoryRepository
+        from memebot.telegram.charts import trade_card
+
+        return await trade_card(PaperHistoryRepository(self._registry._sessions), position_id)
+
     async def paper_history_csv(self) -> bytes:
         return await self._registry.paper_history_csv()
 

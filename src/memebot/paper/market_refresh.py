@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 from collections.abc import Awaitable, Callable
@@ -38,6 +39,9 @@ from memebot.providers.solana.rpc import SolanaRpcError
 
 from .models import ExecutionMarketSnapshot
 from .price_safety import source_disagreement
+
+_MIN_SLOT_RETRY_SECONDS = 0.2
+_MIN_SLOT_RETRY_BUDGET_SECONDS = 2.0
 
 
 class CurrentPaperMarketRefresher:
@@ -96,9 +100,22 @@ class CurrentPaperMarketRefresher:
             )
         try:
             started = monotonic()
-            bundle = await self.reader._bundle(
-                None, mint=market.mint, minimum_slot=market.source_slot or 0
-            )
+            while True:
+                try:
+                    bundle = await self.reader._bundle(
+                        None, mint=market.mint, minimum_slot=market.source_slot or 0
+                    )
+                    break
+                except SolanaRpcError as error:
+                    # -32016: the RPC node is still behind the stream's slot. It
+                    # normally catches up within a few hundred milliseconds.
+                    if (
+                        error.code != "rpc_-32016"
+                        or monotonic() - started + _MIN_SLOT_RETRY_SECONDS
+                        > _MIN_SLOT_RETRY_BUDGET_SECONDS
+                    ):
+                        raise
+                    await asyncio.sleep(_MIN_SLOT_RETRY_SECONDS)
             if monotonic() - started > self.max_read_seconds:
                 return replace(
                     market,

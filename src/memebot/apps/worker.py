@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlsplit
@@ -60,11 +61,13 @@ from memebot.storage.database.control import ControlRepository
 from memebot.storage.database.engine import Database, create_database_engine
 from memebot.storage.database.experiments import ExperimentRepository
 from memebot.storage.database.outcomes import OutcomeRecorder
+from memebot.storage.database.paper_history import PaperHistoryRepository
 from memebot.storage.database.pending import PendingPaperActionRepository
 from memebot.storage.database.registry import TokenRegistry
 from memebot.storage.database.wallets import WalletIntelligenceRepository
 from memebot.strategies.presets import initial_strategy_presets
 from memebot.strategies.runner import MultiStrategyRunner
+from memebot.telegram.charts import closed_trade_card
 from memebot.telegram.notifications import (
     TelegramTradeNotifier,
     tracked_wallet_notification,
@@ -176,7 +179,9 @@ async def _run_discovery_worker(
     )
     controls = ControlRepository(database.sessions)
     experiments = ExperimentRepository(database.sessions)
-    telegram_notifier = _telegram_notifier(settings, registry)
+    telegram_notifier = _telegram_notifier(
+        settings, registry, PaperHistoryRepository(database.sessions)
+    )
     feature_engine = RollingFeatureEngine(
         settings.feature_windows_seconds,
         snapshot_interval_seconds=settings.feature_snapshot_interval_seconds,
@@ -901,7 +906,9 @@ async def _run_discovery_worker(
 
 
 def _telegram_notifier(
-    settings: Settings, registry: TokenRegistry | None = None
+    settings: Settings,
+    registry: TokenRegistry | None = None,
+    history: PaperHistoryRepository | None = None,
 ) -> TelegramTradeNotifier | None:
     if (
         not (
@@ -920,6 +927,7 @@ def _telegram_notifier(
         duplicate_cooldown_seconds=(settings.telegram_notification_duplicate_cooldown_seconds),
         event_notifications_enabled=settings.telegram_trade_notifications_enabled,
         token_lookup=registry.token_identity if registry is not None else None,
+        chart_lookup=None if history is None else partial(closed_trade_card, history),
     )
 
 

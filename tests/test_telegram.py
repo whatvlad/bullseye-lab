@@ -183,7 +183,8 @@ def test_active_strategy_signal_notification_explains_the_decision() -> None:
 
 def test_open_positions_have_direct_close_buttons() -> None:
     mint = "So11111111111111111111111111111111111111112"
-    markup = positions_keyboard([{"mint": mint}])
+    position_id = "8e7c1f9a-0000-4000-8000-000000000001"
+    markup = positions_keyboard([{"mint": mint, "position_id": position_id}])
     callbacks = [
         button.callback_data
         for row in markup.inline_keyboard
@@ -192,6 +193,7 @@ def test_open_positions_have_direct_close_buttons() -> None:
     ]
 
     assert f"position:confirm:{mint}" in callbacks
+    assert f"history:chart:{position_id}" in callbacks
     assert "positions:close_all:confirm" in callbacks
 
 

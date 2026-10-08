@@ -70,11 +70,16 @@ def manual_keyboard() -> InlineKeyboardMarkup:
 
 def positions_keyboard(positions: list[dict[str, object]]) -> InlineKeyboardMarkup:
     buttons = [
-        (
-            f"🔴 Close {_position_label(item)}",
-            f"position:confirm:{item['mint']}",
-        )
+        button
         for item in positions[:15]
+        for button in (
+            *(
+                [(f"📈 Chart {_position_label(item)}", f"history:chart:{item['position_id']}")]
+                if item.get("position_id")
+                else []
+            ),
+            (f"🔴 Close {_position_label(item)}", f"position:confirm:{item['mint']}"),
+        )
     ]
     if positions:
         buttons.append(("🛑 Close all positions", "positions:close_all:confirm"))
