@@ -1,0 +1,75 @@
+# Stream-first standard Pump.fun proof
+
+Current follow-up: Alchemy PAYG now delivers dynamically filtered executed
+packets. See [the measured pilot](FILTERED_STREAM_PILOT.md). The text below
+describes the earlier zero-packet prototype; the runner and calibration remain
+BLOCKED after the follow-up's partial acquisition improvement.
+
+The local transaction reuse prototype is implemented. It does not yet replace most
+RPC reconstruction, demonstrate live repeatability or unlock calibration. The
+runner remains BLOCKED; no order, strategy change, disagreement band, provider
+purchase or calibration was made.
+
+TransactionEvidenceStream separates provider transport from proof logic.
+TransactionEvidence retains signature, slot, optional transaction index, raw
+instructions/account keys, inner instructions, full pre/post SOL and token balances,
+logs/events, commitment, receipt timestamp and source. AccountEvidence has address,
+slot, data/owner, optional write version and transaction signature. The Helius
+adapter decodes complete base64 messages and verifies transaction signatures; JSON
+packets must retain structurally complete raw metadata. Execution metadata itself
+is provider evidence, not cryptographically authenticated by a transaction signature.
+
+EvidenceBuffer stores standard single-trade native-SOL Pump packets only, indexed
+by signature and carrying mint/derived canonical curve. TTL is 120 seconds; at most
+2,048 transactions globally, 64 per market and 32 MB transaction payload. Account
+storage has independent 2,048-event/32 MB limits and 64 KB per update. Expiration,
+overflow and coverage are explicit. These are storage controls, not strategy or
+disagreement thresholds. Account retention is limited to accounts referenced by
+retained standard packets. Completion/migration revokes that market. Complex fee
+routes still fail the unchanged bank/parity proof; no route support was expanded.
+
+StreamFirstProofService tries a captured anchor or successor transaction before
+getTransaction. Missing packets fall back to the original request/retry/deadline
+policy. Captured packets still pass the existing reconstruction, event anchoring,
+native instruction, actual fee transfers/refunds, integer arithmetic, physical
+inventory, identity/config and terminal-bank checks. Historical BUY and SELL byte
+replays both PASS with five proof RPC reads plus one mandatory execution refresh.
+Those replays use synthetic current receipt timing and are not natural live proofs.
+
+One atomic canonical account bank is retained during proof and a separate atomic
+execution refresh is mandatory. Cached decoded config can accelerate processing;
+individually cached account data cannot stand in for a synchronized bank. The four
+address-history fences remain. No available adapter supplies reconciled closed
+transaction/account windows, so COMPLETE_FOR_WINDOW is explicitly unavailable.
+
+The passive pilot had a 300-second, 96-read, four-paired-candidate, 32 MB cap. It
+stopped at the data cap after 22.479 seconds total runtime, including teardown.
+It observed four launches, all standard, and one serious natural candidate under
+the existing aggressive qualification. OLD and NEW each failed native/physical
+reconstruction after one RPC read. Full transaction subscription was rejected;
+zero full transactions and zero account updates were received. Neither natural
+complete BUY nor repeatable live SELL evidence was obtained. Paired calls were
+sequential and may see different banks; this is not a controlled latency benchmark.
+
+The stream-first objective therefore remains blocked at provider access plus
+coverage certification, with existing semantic failure reasons unresolved.
+The historical complete live SELL remains the only complete natural proof.
+
+| Readiness question | Result |
+| --- | --- |
+| Previous failures fundamentally retrospective? | Unknown; 27 direct transaction-read targets, eight history bounds, three sync targets; no causal prevention proven |
+| Can a filtered stream eliminate them? | It can avoid unavailable transaction RPC when a compatible packet was captured; no measured elimination in this pilot |
+| Can continuity replace four fences? | In principle with reconciled mutation windows, including vault/config writes and bank barriers; not established here |
+| Natural complete BUY obtained? | No |
+| Repeatable live SELL obtained? | No |
+| RPC per serious candidate? | OLD 1, NEW 1 for the single failed pilot pair; successful live cost undefined |
+| Stream bandwidth cost? | 32,006,935 decoded application bytes including rejected subscription response; billed/wire/compressed cost unknown |
+| Required infrastructure? | Existing full-metadata transaction/account service access plus tested replay/coverage barriers; resolve current Alchemy endpoint first |
+| Ready for synchronized calibration? | No |
+| Runner blocked? | Yes |
+
+See STREAM_PROVIDER_COMPARISON.md, STREAM_COVERAGE_INTEGRITY.md and
+STREAM_PROOF_COST.md. All machine outputs are generated by
+analysis/finalize_stream_proof.py. analysis/stream_proof_gate.json records source
+and report fingerprints. The four new implementation files are also bound into
+the existing runner validation file list. No runtime worker or experiment was started.

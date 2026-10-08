@@ -1,0 +1,13 @@
+{
+  "upstream_commit": "79abd849f6a7ea2284d861388adf249bd4093d92",
+  "sources": {
+    "geyser.proto": {
+      "url": "https://raw.githubusercontent.com/rpcpool/yellowstone-grpc/79abd849f6a7ea2284d861388adf249bd4093d92/yellowstone-grpc-proto/proto/geyser.proto",
+      "sha256": "56244cb007a872f28e294eedba0db4ae4bcbfb401035e4fbb8ec9c347d8ee9b3"
+    },
+    "solana-storage.proto": {
+      "url": "https://raw.githubusercontent.com/rpcpool/yellowstone-grpc/79abd849f6a7ea2284d861388adf249bd4093d92/yellowstone-grpc-proto/proto/solana-storage.proto",
+      "sha256": "e5d16ba9a9e83f6ed8c92a96b6b75dfd64c43f897b976011eb3ec5abe2f3c818"
+    }
+  }
+}

@@ -1,0 +1,637 @@
+{
+  "execution": {
+    "latency_ms": {
+      "decision_to_fill": {
+        "count": 0,
+        "max": null,
+        "p50": null,
+        "p95": null
+      },
+      "market_data_age_at_decision": {
+        "count": 0,
+        "max": null,
+        "p50": null,
+        "p95": null
+      },
+      "signal_to_decision": {
+        "count": 0,
+        "max": null,
+        "p50": null,
+        "p95": null
+      },
+      "signal_to_fill": {
+        "count": 0,
+        "max": null,
+        "p50": null,
+        "p95": null
+      }
+    },
+    "rejection_reasons": {},
+    "rejections": 0
+  },
+  "experiment": {
+    "application_version": "0.2.0",
+    "configuration_snapshot": {
+      "captured_at": "2026-09-13T13:51:16.126824+00:00",
+      "settings": {
+        "alpha_birdeye_holder_profiles_per_day": 10,
+        "alpha_filter_enabled": true,
+        "alpha_filter_shadow_mode": false,
+        "birdeye_configured": true,
+        "birdeye_host": "public-api.birdeye.so",
+        "birdeye_monthly_cu_budget": 25000,
+        "birdeye_runtime_mode": "on_demand_rest",
+        "code_fingerprint": "8b4d038392b7e6745956c13215402cf325bf4358e294ff9446370dbda9b2f2de",
+        "coingecko_host": "api.coingecko.com",
+        "database_url": "postgresql+asyncpg://bullseye:***@localhost:5432/bullseye",
+        "enabled_providers": [
+          "solana_rpc"
+        ],
+        "environment": "development",
+        "execution_mode": "paper",
+        "execution_parameters": {
+          "alpha_birdeye_cache_seconds": 21600,
+          "alpha_birdeye_holder_profiles_per_day": 10,
+          "alpha_filter_enabled": true,
+          "alpha_filter_shadow_mode": false,
+          "alpha_max_bundler_supply_percent": "40",
+          "alpha_max_dev_supply_percent": "20",
+          "alpha_max_insider_supply_percent": "20",
+          "alpha_max_sniper_supply_percent": "50",
+          "birdeye_cache_seconds": 300,
+          "birdeye_minimum_interval_seconds": 1.1,
+          "birdeye_monthly_cu_budget": 25000,
+          "birdeye_timeout_seconds": 10.0,
+          "database_echo": false,
+          "enabled_providers": [
+            "solana_rpc"
+          ],
+          "environment": "development",
+          "execution_mode": "paper",
+          "feature_max_lateness_seconds": 5,
+          "feature_snapshot_interval_seconds": 1,
+          "feature_windows_seconds": [
+            1,
+            5,
+            10,
+            15,
+            30,
+            60,
+            120,
+            300,
+            600
+          ],
+          "log_format": "console",
+          "log_level": "INFO",
+          "network": "solana",
+          "ollama_model": "",
+          "paper_base_position_percent": "8",
+          "paper_compute_latency_ms": 50,
+          "paper_consecutive_loss_limit": 6,
+          "paper_daily_loss_limit_percent": "10",
+          "paper_execution_provider_fee_bps": "50",
+          "paper_hazard_confirmation_seconds": 1.0,
+          "paper_latency_slippage_bps": "50",
+          "paper_loss_cooldown_seconds": 600,
+          "paper_max_entry_price_impact_bps_aggressive": "800",
+          "paper_max_entry_price_impact_bps_balanced": "500",
+          "paper_max_entry_price_impact_bps_conservative": "300",
+          "paper_max_holding_seconds": 1800,
+          "paper_max_market_staleness_seconds": 5,
+          "paper_max_open_positions": 5,
+          "paper_max_position_percent": "8",
+          "paper_max_quote_price_staleness_seconds": 180,
+          "paper_max_round_trip_cost_bps_aggressive": "900",
+          "paper_max_round_trip_cost_bps_balanced": "700",
+          "paper_max_round_trip_cost_bps_conservative": "700",
+          "paper_max_signal_age_seconds": 5.0,
+          "paper_max_signal_price_drift_percent": "8",
+          "paper_max_total_exposure_percent": "40",
+          "paper_min_position_percent": "0.5",
+          "paper_mint_reentry_cooldown_seconds": 900,
+          "paper_network_fee_sol": "0.00001",
+          "paper_pending_close_ttl_seconds": 30,
+          "paper_pending_entry_ttl_seconds": 30,
+          "paper_position_monitor_interval_seconds": 5.0,
+          "paper_priority_fee_sol": "0.0001",
+          "paper_risk_per_trade_percent": "0.5",
+          "paper_runner_enabled": true,
+          "paper_runner_max_holding_seconds": 7200,
+          "paper_runner_trailing_activation_percent": "50",
+          "paper_runner_trailing_max_percent": "30",
+          "paper_runner_trailing_min_percent": "18",
+          "paper_stagnation_exit_seconds": 120,
+          "paper_stagnation_min_mfe_percent": "5",
+          "paper_stop_loss_percent": "12",
+          "paper_stop_loss_risk_reserve_percent": "30",
+          "paper_submission_latency_ms": 750,
+          "paper_take_profit_fraction": "0.5",
+          "paper_take_profit_percent": "100",
+          "paper_trading_enabled": true,
+          "paper_trailing_activation_percent": "12",
+          "paper_trailing_stop_percent": "8",
+          "paper_venue_fee_bps": "125",
+          "pump_final_stretch_percent": "80",
+          "pumpportal_candidate_observation_seconds": 60,
+          "pumpportal_candidate_subscription_interval_seconds": 2,
+          "pumpportal_max_active_token_subscriptions": 4,
+          "pumpportal_max_trade_events_per_candidate": 24,
+          "pumpportal_max_trade_events_per_day": 5000,
+          "pumpportal_trade_budget_reserve_percent": "10",
+          "research_control_sample_percent": 10,
+          "research_max_active_subscriptions": 8,
+          "research_observation_seconds": 3660,
+          "risk_assessment_max_per_day": 2000,
+          "risk_assessment_max_per_hour": 180,
+          "risk_assessment_queue_size": 500,
+          "risk_assessment_workers": 2,
+          "risk_creator_hard_reject_percent": "20",
+          "risk_largest_buyer_warning_percent": "50",
+          "risk_prefilter_min_flow_imbalance": "-0.80",
+          "risk_prefilter_min_trades": 2,
+          "risk_prefilter_min_unique_buyers": 1,
+          "risk_prefilter_window_seconds": 30,
+          "risk_reassessment_interval_seconds": 10,
+          "risk_synchronized_buyers_warning_count": 3,
+          "risk_top10_warning_percent": "98",
+          "risk_top1_hard_reject_percent": "35",
+          "risk_top5_warning_percent": "90",
+          "social_trading_weight_enabled": false,
+          "solana_account_retry_count": 4,
+          "solana_account_retry_delay_seconds": 0.4,
+          "solana_commitment": "confirmed",
+          "solana_halted_probe_seconds": 900.0,
+          "solana_invalid_status_halt_threshold": 3,
+          "solana_reconnect_base_seconds": 1.0,
+          "solana_reconnect_jitter_seconds": 0.5,
+          "solana_reconnect_max_seconds": 5.0,
+          "solana_rpc_timeout_seconds": 15.0,
+          "solana_ws_open_timeout_seconds": 15.0,
+          "solana_ws_ping_interval_seconds": 20.0,
+          "solana_ws_ping_timeout_seconds": 20.0,
+          "starting_capital": "1000",
+          "starting_capital_currency": "USDT",
+          "telegram_max_concurrent_updates": 8,
+          "telegram_notification_duplicate_cooldown_seconds": 60.0,
+          "telegram_notification_minimum_interval_seconds": 1.0,
+          "telegram_notification_queue_size": 200,
+          "telegram_polling_timeout_seconds": 20,
+          "telegram_tracked_wallet_notifications_enabled": true,
+          "telegram_trade_notifications_enabled": true,
+          "wallet_candidate_min_launches": 3,
+          "wallet_early_entry_seconds": 30,
+          "wallet_high_confidence_min_launches": 30,
+          "wallet_scored_min_launches": 10,
+          "wallet_success_expansion_percent": "50"
+        },
+        "feature_max_lateness_seconds": 5,
+        "feature_snapshot_interval_seconds": 1,
+        "feature_windows_seconds": [
+          1,
+          5,
+          10,
+          15,
+          30,
+          60,
+          120,
+          300,
+          600
+        ],
+        "network": "solana",
+        "ollama_model_configured": false,
+        "paper_base_position_percent": "8",
+        "paper_compute_latency_ms": 50,
+        "paper_consecutive_loss_limit": 6,
+        "paper_daily_loss_limit_percent": "10",
+        "paper_execution_provider_fee_bps": "50",
+        "paper_latency_slippage_bps": "50",
+        "paper_loss_cooldown_seconds": 600,
+        "paper_max_entry_price_impact_bps": {
+          "aggressive": "800",
+          "balanced": "500",
+          "conservative": "300"
+        },
+        "paper_max_market_staleness_seconds": 5,
+        "paper_max_open_positions": 5,
+        "paper_max_position_percent": "8",
+        "paper_max_round_trip_cost_bps": {
+          "aggressive": "900",
+          "balanced": "700",
+          "conservative": "700"
+        },
+        "paper_max_total_exposure_percent": "40",
+        "paper_mint_reentry_cooldown_seconds": 900,
+        "paper_pending_close_ttl_seconds": 30,
+        "paper_pending_entry_ttl_seconds": 30,
+        "paper_position_monitor_interval_seconds": 5.0,
+        "paper_stagnation_exit_seconds": 120,
+        "paper_stagnation_min_mfe_percent": "5",
+        "paper_stop_loss_percent": "12",
+        "paper_stop_loss_risk_reserve_percent": "30",
+        "paper_submission_latency_ms": 750,
+        "paper_take_profit_percent": "100",
+        "paper_trading_enabled": true,
+        "paper_trailing_stop_percent": "8",
+        "paper_venue_fee_bps": "125",
+        "pump_final_stretch_percent": "80",
+        "pumpportal_candidate_observation_seconds": 60,
+        "pumpportal_candidate_subscription_interval_seconds": 2,
+        "pumpportal_configured": true,
+        "pumpportal_host": "pumpportal.fun",
+        "pumpportal_max_active_token_subscriptions": 4,
+        "pumpportal_max_trade_events_per_candidate": 24,
+        "pumpportal_max_trade_events_per_day": 5000,
+        "pumpportal_trade_budget_reserve_percent": "10",
+        "risk_assessment_max_per_day": 2000,
+        "risk_assessment_max_per_hour": 180,
+        "risk_assessment_workers": 2,
+        "risk_creator_hard_reject_percent": "20",
+        "risk_reassessment_interval_seconds": 10,
+        "risk_top10_warning_percent": "98",
+        "risk_top1_hard_reject_percent": "35",
+        "risk_top5_warning_percent": "90",
+        "social_trading_weight_enabled": false,
+        "solana_account_retry_count": 4,
+        "solana_account_retry_delay_seconds": 0.4,
+        "solana_commitment": "confirmed",
+        "solana_exit_rpc_http_host": "api.mainnet-beta.solana.com",
+        "solana_halted_probe_seconds": 900.0,
+        "solana_invalid_status_halt_threshold": 3,
+        "solana_reconnect_base_seconds": 1.0,
+        "solana_reconnect_max_seconds": 5.0,
+        "solana_rpc_http_host": "solana-mainnet.g.alchemy.com",
+        "solana_rpc_timeout_seconds": 15.0,
+        "solana_ws_open_timeout_seconds": 15.0,
+        "starting_capital": "1000",
+        "starting_capital_currency": "USDT",
+        "telegram_access_configured": true,
+        "telegram_allowed_user_count": 1,
+        "telegram_configured": true,
+        "telegram_tracked_wallet_notifications_enabled": true,
+        "telegram_trade_notifications_enabled": true,
+        "wallet_candidate_min_launches": 3,
+        "wallet_early_entry_seconds": 30,
+        "wallet_high_confidence_min_launches": 30,
+        "wallet_scored_min_launches": 10,
+        "x_configured": false
+      },
+      "strategy": {
+        "activation_source": "trading_control",
+        "active_for_execution": true,
+        "allowed_regimes": [
+          "final_stretch",
+          "early_momentum",
+          "bonding_curve"
+        ],
+        "component_weights": {
+          "graduation_velocity": "30",
+          "lifecycle": "0",
+          "market": "0",
+          "momentum": "70",
+          "risk": "0",
+          "social": "0",
+          "wallet": "0"
+        },
+        "declared_active_for_execution": false,
+        "display_name": "Balanced",
+        "enabled": true,
+        "key": "balanced",
+        "maximum_price_change_percent": "35",
+        "maximum_risk_score": "60",
+        "minimum_component_completeness_percent": "50",
+        "minimum_observation_seconds": 15,
+        "minimum_token_age_seconds": 10,
+        "minimum_trades_in_window": 10,
+        "minimum_unique_buyers_in_window": 6,
+        "require_sell_absorption": true,
+        "score_threshold": "60",
+        "scoring_window_seconds": 30,
+        "social_weight_enabled": false,
+        "version": 9,
+        "version_id": "df4dbea5-1d26-5f55-9d3e-b33513631725",
+        "watch_threshold": "50"
+      },
+      "trading_control": {
+        "active_strategy_key": "balanced",
+        "base_position_percent": "8.0000",
+        "max_holding_seconds": 1800,
+        "max_open_positions": 5,
+        "max_position_percent": "8.0000",
+        "stop_loss_percent": "12.0000",
+        "take_profit_percent": "100.0000",
+        "trailing_stop_percent": "18.0000"
+      }
+    },
+    "id": "5bb15cc4-fd75-46bb-a65e-812b09d98e77",
+    "name": "sniper-v9-forward-2026-09-13",
+    "notes": "v9 corrected execution and real reserve marks; early demand baseline. Separate post-graduation shadow preset. No profitability claim; paper only.",
+    "portfolio_id": "711ce8d0-76a8-43f9-83ec-3681b8e63fcb",
+    "started_at": "2026-09-13T13:51:16.126824+00:00",
+    "status": "active",
+    "stopped_at": null,
+    "strategy_key": "balanced",
+    "strategy_version_id": "df4dbea5-1d26-5f55-9d3e-b33513631725"
+  },
+  "performance": {
+    "decision_coverage": {
+      "10": {
+        "gap": 9,
+        "legacy_unverified": 0,
+        "missing_or_pending": 9,
+        "observed": 6
+      },
+      "120": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      },
+      "1800": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      },
+      "30": {
+        "gap": 3,
+        "legacy_unverified": 0,
+        "missing_or_pending": 18,
+        "observed": 3
+      },
+      "300": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      },
+      "3600": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      },
+      "60": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      },
+      "600": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 24,
+        "observed": 0
+      }
+    },
+    "expectancy_per_trade": null,
+    "largest_win": "0",
+    "losses": 0,
+    "maximum_drawdown": "0",
+    "maximum_drawdown_percent": "0",
+    "pnl_excluding_largest_win": "0",
+    "post_exit_coverage": {
+      "10": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "120": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "1800": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "30": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "300": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "3600": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "60": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      },
+      "600": {
+        "gap": 0,
+        "legacy_unverified": 0,
+        "missing_or_pending": 0,
+        "observed": 0
+      }
+    },
+    "profit_factor": null,
+    "realized_pnl": "0",
+    "total_execution_fees": "0",
+    "win_rate_percent": null,
+    "wins": 0
+  },
+  "portfolio": {
+    "cash_balance": "100.00000000",
+    "currency": "USDT",
+    "initial_cash": "100.00000000",
+    "realized_pnl": "0E-8"
+  },
+  "sample": {
+    "active_strategy_decisions": 8,
+    "closed_trades": 0,
+    "decisions": 24,
+    "open_trades": 0,
+    "orders": 0,
+    "trades": 0
+  },
+  "segments": {
+    "closed_trades_by_exit": {},
+    "closed_trades_by_position_size": {},
+    "closed_trades_by_score": {},
+    "decision_actions": {
+      "skip": 8
+    },
+    "decision_reason_details": {
+      "buyer_flow_concentrated": 6,
+      "insufficient_observation_span": 4,
+      "insufficient_sustained_buy_flow": 5,
+      "insufficient_trades_in_scoring_window": 3,
+      "insufficient_unique_buyers_in_scoring_window": 7,
+      "risk:creator_holding_above_limit": 1,
+      "risk:top1_holder_above_limit": 6,
+      "risk_gate_not_approved": 8,
+      "risk_score_unknown": 3,
+      "sell_absorption_not_confirmed": 6,
+      "token_younger_than_strategy_minimum": 3
+    },
+    "decision_reasons": {
+      "buyer_flow_concentrated": 6,
+      "insufficient_observation_span": 4,
+      "insufficient_sustained_buy_flow": 5,
+      "insufficient_trades_in_scoring_window": 3,
+      "insufficient_unique_buyers_in_scoring_window": 7,
+      "risk": 7,
+      "risk_gate_not_approved": 8,
+      "risk_score_unknown": 3,
+      "sell_absorption_not_confirmed": 6,
+      "token_younger_than_strategy_minimum": 3
+    },
+    "decision_score_buckets": {
+      "50_59": 1,
+      "60_69": 0,
+      "70_79": 2,
+      "80_plus": 0,
+      "below_50": 5
+    },
+    "market_regimes": {
+      "bonding_curve": 6,
+      "early_momentum": 2
+    },
+    "recent_active_decisions": [
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:35.378251+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk_score_unknown",
+          "insufficient_sustained_buy_flow",
+          "sell_absorption_not_confirmed"
+        ],
+        "regime": "bonding_curve",
+        "score": "38.94"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:33.455432+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "buyer_flow_concentrated",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "bonding_curve",
+        "score": "32.77"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:22.828053+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "risk_score_unknown",
+          "insufficient_observation_span",
+          "buyer_flow_concentrated",
+          "sell_absorption_not_confirmed",
+          "token_younger_than_strategy_minimum",
+          "insufficient_trades_in_scoring_window",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "early_momentum",
+        "score": "75.48"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:21.706020+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "risk:creator_holding_above_limit",
+          "insufficient_sustained_buy_flow",
+          "sell_absorption_not_confirmed",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "bonding_curve",
+        "score": "55.48"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:15.597864+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "buyer_flow_concentrated",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "early_momentum",
+        "score": "70.71"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:07.340431+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk_score_unknown",
+          "insufficient_observation_span",
+          "insufficient_sustained_buy_flow",
+          "buyer_flow_concentrated",
+          "sell_absorption_not_confirmed",
+          "token_younger_than_strategy_minimum",
+          "insufficient_trades_in_scoring_window",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "bonding_curve",
+        "score": "32.77"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:52:05.337088+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "insufficient_observation_span",
+          "insufficient_sustained_buy_flow",
+          "buyer_flow_concentrated",
+          "sell_absorption_not_confirmed",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "bonding_curve",
+        "score": "35.30"
+      },
+      {
+        "action": "skip",
+        "decided_at": "2026-09-13T13:51:53.858444+00:00",
+        "reasons": [
+          "risk_gate_not_approved",
+          "risk:top1_holder_above_limit",
+          "insufficient_observation_span",
+          "insufficient_sustained_buy_flow",
+          "buyer_flow_concentrated",
+          "sell_absorption_not_confirmed",
+          "token_younger_than_strategy_minimum",
+          "insufficient_trades_in_scoring_window",
+          "insufficient_unique_buyers_in_scoring_window"
+        ],
+        "regime": "bonding_curve",
+        "score": "40.42"
+      }
+    ],
+    "risk_critical_unknowns": {
+      "creator_holding": 2,
+      "holder_distribution": 2,
+      "liquidity": 1,
+      "market_validation": 1
+    },
+    "risk_unknown_details": {
+      "bundled_supply_percent:transaction_funding_attribution_not_implemented": 8,
+      "creator_holding:circulating_supply_unknown": 2,
+      "effective_liquidity:unsupported_market_program": 1,
+      "holder_distribution:largest_token_account_not_found": 2,
+      "wallet_funding_graph:not_available_from_standard_rpc_snapshot": 8
+    }
+  }
+}

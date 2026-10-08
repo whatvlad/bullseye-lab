@@ -1,0 +1,28 @@
+{
+  "api_key_exposed": false,
+  "authenticated": true,
+  "available": [
+    "account_credits",
+    "new_listings",
+    "supported_networks",
+    "token_market_data",
+    "token_price"
+  ],
+  "credits": {
+    "end_time": "1792708050",
+    "overage_cost": {
+      "total": "0"
+    },
+    "overage_usage": {
+      "total": "0"
+    },
+    "remaining": {
+      "total": "30000"
+    },
+    "start_time": "1790116050"
+  },
+  "probed_at": "2026-09-30T23:34:55.040753+00:00",
+  "unavailable": {
+    "token_exit_liquidity": "unsupported_chain_base_only"
+  }
+}

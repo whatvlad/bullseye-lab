@@ -1,0 +1,22 @@
+{
+  "mode": "decision_replay",
+  "input": "research_sessions\\incident-2026-10-01\\events.jsonl",
+  "configurations": "current_presets_counterfactual",
+  "decisions": {
+    "conservative:skip": 74,
+    "balanced:skip": 61,
+    "aggressive:skip": 65,
+    "aggressive:enter_candidate": 7,
+    "aggressive:watch": 2,
+    "balanced:enter_candidate": 11,
+    "balanced:watch": 2
+  },
+  "output_sha256": "2beb18aaab75d8ae8a14675000ab051a3122fb99a404f66248a64801a1030907",
+  "execution_simulated": false,
+  "pnl": null,
+  "limitations": [
+    "recorded risk only",
+    "no Ollama replay",
+    "no fill/latency replay"
+  ]
+}

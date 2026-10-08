@@ -1,0 +1,17 @@
+{
+  "package": "@pump-fun/pump-swap-sdk",
+  "version": "1.20.0",
+  "integrity": "sha512-DuBZ5ge3OJPao6m0aZZj+GTZFzfZ/TU3ca1EgL9ejr+8QIYETlLQVMaiznS+U4uGzM9z58mpxoXn3HuVEYHCFw==",
+  "files": [
+    "package/src/__tests__/collectCoinCreatorFeeWsolGolden.ts",
+    "package/src/__tests__/creatorFee.spec.ts",
+    "package/src/__tests__/creatorFees.spec.ts",
+    "package/src/__tests__/feeConfigMainnetFixture.ts",
+    "package/dist/sdk/fees.d.ts",
+    "package/src/__tests__/fees.spec.ts",
+    "package/src/sdk/fees.ts",
+    "package/dist/sdk/sell.d.ts",
+    "package/src/__tests__/sell.spec.ts",
+    "package/src/sdk/sell.ts"
+  ]
+}

@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bullseye-lab"
+version = "0.2.0"
+description = "Solana memecoin research and automated paper-trading platform"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Bullseye Lab" }]
+dependencies = [
+  "aiogram>=3.28,<4",
+  "alembic>=1.14,<2",
+  "asyncpg>=0.30,<1",
+  "httpx>=0.28,<1",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3",
+  "SQLAlchemy[asyncio]>=2.0.36,<3",
+  "structlog>=24.4,<27",
+  "solders>=0.29,<0.30",
+  "websockets>=15,<17",
+]
+
+[project.optional-dependencies]
+stream-research = ["grpcio>=1.84,<2", "protobuf>=7.35.1,<8"]
+dev = [
+  "aiosqlite>=0.20,<1",
+  "mypy>=1.14,<2",
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=0.25,<2",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+bullseye = "memebot.cli:entrypoint"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memebot"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["src/memebot/providers/solana/_yellowstone_generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["memebot"]
+mypy_path = "src"
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["memebot.providers.solana._yellowstone_generated.*", "grpc", "grpc.*"]
+follow_imports = "skip"
+ignore_errors = true
+ignore_missing_imports = true

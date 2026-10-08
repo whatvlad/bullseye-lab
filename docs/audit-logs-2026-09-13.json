@@ -1,0 +1,122 @@
+[
+  {
+    "file": "logs\\baseline-v5-discover.err.log",
+    "parsed_lines": 16753,
+    "start": "2026-08-25T23:53:10.615192Z",
+    "end": "2026-08-26T09:45:07.326176Z",
+    "events": {
+      "discovery_worker_starting": 1,
+      "provider_health": 3,
+      "token_discovered": 14762,
+      "pumpportal_candidate_subscribed": 642,
+      "pumpportal_candidate_observation_completed": 642,
+      "token_risk_assessed": 160,
+      "strategy_decision_created": 480,
+      "pumpportal_trade_usage": 14,
+      "risk_prefilter_rejected": 49
+    },
+    "discovered_unique": 14761,
+    "subscribed_unique": 642,
+    "subscribed_discovered_intersection": 619,
+    "candidate_delay_seconds": {
+      "min": 30.0,
+      "median": 53.16559385551585,
+      "max": 57.58162820933334
+    },
+    "observation_end_reasons": {
+      "observation_timeout": 245,
+      "candidate_event_cap": 397
+    },
+    "orders": {},
+    "filled_close_reasons": {},
+    "order_rejections": {},
+    "matched_roundtrips": [],
+    "matched_median_seconds": null,
+    "matched_closed_within_10_seconds": 0,
+    "provider_errors": {
+      "None": 2,
+      "ConnectionClosedError": 1
+    }
+  },
+  {
+    "file": "logs\\baseline-v5-fixed.err.log",
+    "parsed_lines": 3848,
+    "start": "2026-08-26T09:47:25.636849Z",
+    "end": "2026-08-26T13:02:49.268931Z",
+    "events": {
+      "discovery_worker_starting": 1,
+      "provider_health": 12,
+      "token_discovered": 3435,
+      "pumpportal_candidate_subscribed": 79,
+      "pumpportal_candidate_observation_completed": 83,
+      "token_risk_assessed": 47,
+      "strategy_decision_created": 141,
+      "risk_prefilter_rejected": 19,
+      "paper_position_marked": 5,
+      "paper_order_completed": 12,
+      "pumpportal_position_subscription_pinned": 5,
+      "alpha_filter_shadow_assessed_after_execution": 5,
+      "pumpportal_trade_usage": 4
+    },
+    "discovered_unique": 3435,
+    "subscribed_unique": 79,
+    "subscribed_discovered_intersection": 55,
+    "candidate_delay_seconds": {
+      "min": 138.89778080914687,
+      "median": 146.67987462300317,
+      "max": 152.5761402028337
+    },
+    "observation_end_reasons": {
+      "candidate_event_cap": 42,
+      "observation_timeout": 37,
+      "position_closed": 4
+    },
+    "orders": {
+      "buy:filled": 5,
+      "sell:filled": 7
+    },
+    "filled_close_reasons": {
+      "trailing_stop": 3,
+      "stop_loss": 1
+    },
+    "order_rejections": {},
+    "matched_roundtrips": [
+      {
+        "mint": "FXZkxPZudkLt7HFFMqYG8KF8ZUK6hfyxbf1issxuALE1",
+        "seconds_between_log_messages": 2.396666,
+        "entry_line": 694,
+        "exit_line": 698,
+        "exit_reason": "trailing_stop"
+      },
+      {
+        "mint": "57TLV29jvDyn8946RhPuNAmq3MdJgBUZhUXAzkY7pump",
+        "seconds_between_log_messages": 1.419781,
+        "entry_line": 864,
+        "exit_line": 869,
+        "exit_reason": "trailing_stop"
+      },
+      {
+        "mint": "74WpeG3JCHwourvAx5UbsRVVuUXc31UmBLr67LGjP3xC",
+        "seconds_between_log_messages": 4.312374,
+        "entry_line": 1862,
+        "exit_line": 1868,
+        "exit_reason": "trailing_stop"
+      },
+      {
+        "mint": "AUw5ToNmr8e6thK4rWAGKKSsavP2AaxCzb5kCbF3pump",
+        "seconds_between_log_messages": 0.357099,
+        "entry_line": 2518,
+        "exit_line": 2520,
+        "exit_reason": "stop_loss"
+      }
+    ],
+    "matched_median_seconds": 1.9082235,
+    "matched_closed_within_10_seconds": 4,
+    "provider_errors": {
+      "None": 6,
+      "KeyError": 4,
+      "ConnectionClosedError": 1,
+      "InvalidStatus": 1
+    }
+  }
+]

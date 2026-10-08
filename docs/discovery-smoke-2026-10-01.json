@@ -1,0 +1,26 @@
+{
+  "duration_seconds": 30,
+  "provider": "pumpportal",
+  "event_counts": {
+    "ProviderHealthUpdated": 2,
+    "TokenDiscovered": 26,
+    "TokenLifecycleChanged": 28
+  },
+  "launch_timestamps_estimated": 26,
+  "health": [
+    {
+      "state": "connected",
+      "error_code": null,
+      "http_status": null
+    },
+    {
+      "state": "disconnected",
+      "error_code": null,
+      "http_status": null
+    }
+  ],
+  "paid_token_subscriptions": 0,
+  "database_writes": 0,
+  "creation_to_discovery_latency_ms": null,
+  "limits": "Discovery normalization only; no RPC validation, strategy or fills."
+}

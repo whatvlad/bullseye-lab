@@ -1,0 +1,238 @@
+{
+  "train_end": "2026-08-24T00:00:00+00:00",
+  "validation_end": "2026-08-26T00:00:00+00:00",
+  "coverage": {
+    "train:5s:eligible": 6017,
+    "train:5s:missing": 6017,
+    "train:10s:eligible": 6017,
+    "train:10s:unknown_quality": 4135,
+    "train:30s:eligible": 6017,
+    "train:30s:unknown_quality": 4022,
+    "train:60s:eligible": 6017,
+    "train:60s:unknown_quality": 3908,
+    "train:120s:eligible": 6017,
+    "train:120s:unknown_quality": 3772,
+    "train:300s:eligible": 6017,
+    "train:300s:unknown_quality": 3544,
+    "train:600s:eligible": 6017,
+    "train:600s:unknown_quality": 3308,
+    "train:10s:missing": 1882,
+    "train:30s:missing": 1993,
+    "train:60s:missing": 2106,
+    "train:120s:missing": 2240,
+    "train:300s:missing": 2467,
+    "train:600s:missing": 2699,
+    "train:600s:purged_boundary": 10,
+    "train:300s:purged_boundary": 6,
+    "train:120s:purged_boundary": 5,
+    "train:60s:purged_boundary": 3,
+    "train:30s:purged_boundary": 2,
+    "validation:5s:eligible": 1502,
+    "validation:5s:missing": 1502,
+    "validation:10s:eligible": 1502,
+    "validation:10s:missing": 1347,
+    "validation:30s:eligible": 1502,
+    "validation:30s:missing": 1417,
+    "validation:60s:eligible": 1502,
+    "validation:60s:missing": 1439,
+    "validation:120s:eligible": 1502,
+    "validation:120s:missing": 1455,
+    "validation:300s:eligible": 1502,
+    "validation:300s:missing": 1461,
+    "validation:600s:eligible": 1502,
+    "validation:600s:missing": 1482,
+    "validation:10s:unknown_quality": 155,
+    "validation:30s:unknown_quality": 85,
+    "validation:60s:unknown_quality": 62,
+    "validation:120s:unknown_quality": 45,
+    "validation:300s:unknown_quality": 38,
+    "validation:600s:unknown_quality": 16,
+    "validation:600s:purged_boundary": 4,
+    "validation:300s:purged_boundary": 3,
+    "validation:120s:purged_boundary": 2,
+    "validation:60s:purged_boundary": 1,
+    "test:5s:eligible": 5109,
+    "test:5s:missing": 5109,
+    "test:10s:eligible": 5109,
+    "test:10s:missing": 1931,
+    "test:30s:eligible": 5109,
+    "test:30s:missing": 2872,
+    "test:60s:eligible": 5109,
+    "test:60s:missing": 3351,
+    "test:120s:eligible": 5109,
+    "test:120s:missing": 3510,
+    "test:300s:eligible": 5109,
+    "test:300s:missing": 3705,
+    "test:600s:eligible": 5109,
+    "test:600s:missing": 3965,
+    "test:10s:unknown_quality": 64,
+    "test:30s:unknown_quality": 19,
+    "test:60s:unknown_quality": 15,
+    "test:120s:unknown_quality": 4,
+    "test:10s:observed": 1873,
+    "test:30s:gap": 737,
+    "test:10s:gap": 1241,
+    "test:30s:observed": 1481,
+    "test:60s:gap": 462,
+    "test:120s:gap": 439,
+    "test:300s:gap": 400,
+    "test:60s:observed": 1281,
+    "test:120s:observed": 1156,
+    "test:300s:observed": 1004,
+    "test:600s:observed": 753,
+    "test:600s:gap": 391
+  },
+  "correlations": {
+    "test:10s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 1873,
+      "unique_tokens": 563,
+      "pearson": 0.0417077125611757,
+      "mean_forward_mark_return_percent": 2.472604017411797
+    },
+    "test:10s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 1873,
+      "unique_tokens": 563,
+      "pearson": 0.0343481826829995,
+      "mean_forward_mark_return_percent": 2.472604017411797
+    },
+    "test:10s:price_acceleration_percent_per_second2": {
+      "samples": 1873,
+      "unique_tokens": 563,
+      "pearson": 0.18073533047469625,
+      "mean_forward_mark_return_percent": 2.472604017411797
+    },
+    "test:10s:buy_sell_volume_ratio": {
+      "samples": 1709,
+      "unique_tokens": 483,
+      "pearson": -0.012053275315393634,
+      "mean_forward_mark_return_percent": 2.378263840032902
+    },
+    "test:30s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 1481,
+      "unique_tokens": 252,
+      "pearson": 0.06510922949789123,
+      "mean_forward_mark_return_percent": 3.52469164535656
+    },
+    "test:30s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 1481,
+      "unique_tokens": 252,
+      "pearson": 0.026640290964863336,
+      "mean_forward_mark_return_percent": 3.52469164535656
+    },
+    "test:30s:price_acceleration_percent_per_second2": {
+      "samples": 1481,
+      "unique_tokens": 252,
+      "pearson": 0.1427670747642952,
+      "mean_forward_mark_return_percent": 3.52469164535656
+    },
+    "test:30s:buy_sell_volume_ratio": {
+      "samples": 1393,
+      "unique_tokens": 223,
+      "pearson": -0.004228418813482548,
+      "mean_forward_mark_return_percent": 3.2549065224365754
+    },
+    "test:60s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 1281,
+      "unique_tokens": 87,
+      "pearson": 0.09228494783699168,
+      "mean_forward_mark_return_percent": 4.621635575846443
+    },
+    "test:60s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 1281,
+      "unique_tokens": 87,
+      "pearson": 0.04838345507782764,
+      "mean_forward_mark_return_percent": 4.621635575846443
+    },
+    "test:60s:price_acceleration_percent_per_second2": {
+      "samples": 1281,
+      "unique_tokens": 87,
+      "pearson": 0.11935702562431716,
+      "mean_forward_mark_return_percent": 4.621635575846443
+    },
+    "test:60s:buy_sell_volume_ratio": {
+      "samples": 1221,
+      "unique_tokens": 83,
+      "pearson": -0.029410206645241594,
+      "mean_forward_mark_return_percent": 4.1067402782822
+    },
+    "test:120s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 1156,
+      "unique_tokens": 66,
+      "pearson": 0.07838969668386823,
+      "mean_forward_mark_return_percent": 3.9475483641926727
+    },
+    "test:120s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 1156,
+      "unique_tokens": 66,
+      "pearson": 0.04345273653804837,
+      "mean_forward_mark_return_percent": 3.9475483641926727
+    },
+    "test:120s:price_acceleration_percent_per_second2": {
+      "samples": 1156,
+      "unique_tokens": 66,
+      "pearson": 0.08074588815056327,
+      "mean_forward_mark_return_percent": 3.9475483641926727
+    },
+    "test:120s:buy_sell_volume_ratio": {
+      "samples": 1091,
+      "unique_tokens": 59,
+      "pearson": -0.013252118864835953,
+      "mean_forward_mark_return_percent": 3.9366628641373977
+    },
+    "test:300s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 1004,
+      "unique_tokens": 43,
+      "pearson": 0.02229649085404868,
+      "mean_forward_mark_return_percent": 4.03245420850769
+    },
+    "test:300s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 1004,
+      "unique_tokens": 43,
+      "pearson": 0.0054090853116033595,
+      "mean_forward_mark_return_percent": 4.03245420850769
+    },
+    "test:300s:price_acceleration_percent_per_second2": {
+      "samples": 1004,
+      "unique_tokens": 43,
+      "pearson": 0.016030439306026767,
+      "mean_forward_mark_return_percent": 4.03245420850769
+    },
+    "test:600s:unique_buyer_rate_acceleration_per_second2": {
+      "samples": 753,
+      "unique_tokens": 33,
+      "pearson": 0.10514140992651494,
+      "mean_forward_mark_return_percent": -3.081556730055175
+    },
+    "test:600s:volume_acceleration_quote_raw_per_second2": {
+      "samples": 753,
+      "unique_tokens": 33,
+      "pearson": 0.08057826689893739,
+      "mean_forward_mark_return_percent": -3.081556730055175
+    },
+    "test:600s:price_acceleration_percent_per_second2": {
+      "samples": 753,
+      "unique_tokens": 33,
+      "pearson": -0.00319071270657779,
+      "mean_forward_mark_return_percent": -3.081556730055175
+    },
+    "test:300s:buy_sell_volume_ratio": {
+      "samples": 961,
+      "unique_tokens": 41,
+      "pearson": -0.0057790475013782565,
+      "mean_forward_mark_return_percent": 4.628503341494136
+    },
+    "test:600s:buy_sell_volume_ratio": {
+      "samples": 719,
+      "unique_tokens": 32,
+      "pearson": 0.00589144437868965,
+      "mean_forward_mark_return_percent": -3.8650945766990397
+    }
+  },
+  "limitations": [
+    "mark returns before execution costs; not net expectancy",
+    "repeated token observations are dependent; samples are not independent trades",
+    "missing horizons and gaps excluded, never replaced by zero",
+    "tokens assigned to earliest cohort, horizon labels purged at split boundaries",
+    "historical diagnostic splits; no prospective profitability validation"
+  ]
+}

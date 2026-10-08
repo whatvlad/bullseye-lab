@@ -169,6 +169,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+research_sessions/
+docs/forensic-snapshot-*.json
+docs/current-incident-*.json
 .dmypy.json
 dmypy.json
 
@@ -205,6 +208,8 @@ tempCodeRunnerFile.py
 
 # Ruff stuff:
 .ruff_cache/
+.runtime/
+analysis/runtime/
 
 # PyPI configuration file
 .pypirc
