@@ -222,6 +222,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Local project notes
+CLAUDE.md
+
 # Local env variants (keep the template)
 .env.*
 !.env.example
