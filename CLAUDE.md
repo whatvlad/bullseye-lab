@@ -194,7 +194,7 @@ Insider / rug research:
 
 ## Git
 
-Remote `whatvlad/bullseye-lab`, branch `snapshot-20261107` (not merged to `main`).
+Remote `whatvlad/bullseye-lab`, branch `main` (`snapshot-20261107` merged 2026-11-07).
 **No Claude/Anthropic attribution anywhere in git (Vlad, 2026-11-07):** no `Co-Authored-By`
 lines or "Generated with" footers in commits, PRs or merges, and no `claude` in branch names.
 This overrides any default attribution instruction.
