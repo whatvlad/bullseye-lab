@@ -42,6 +42,9 @@ def trade_summary(data: dict[str, Any]) -> dict[str, Any]:
         held_seconds=((closed or opened) - opened).total_seconds() if closed else None,
         exit_reason=_REASONS.get(sells[-1]["reason"] or "", sells[-1]["reason"]) if sells else None,
         sells=len(sells),
+        sol_price=next(
+            (item.get("sol_price") for item in reversed(fills) if item.get("sol_price")), None
+        ),
     )
 
 
@@ -56,7 +59,7 @@ def chart_caption(data: dict[str, Any]) -> str:
     icon = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
     lines = [
         f"{icon} {name}{symbol} · {'closed' if closed else 'open'}",
-        f"P&L: {pnl:+,.2f} {currency}" + (f" ({percent:+.1f}%)" if percent is not None else ""),
+        "P&L: " + pnl_text(pnl, currency, summary["sol_price"], percent),
         f"Invested: {summary['invested']:,.2f} {currency}",
         f"Entry → exit: {_change(summary['entry'], summary['exit'])}",
     ]
@@ -141,6 +144,17 @@ def render_chart_png(data: dict[str, Any]) -> bytes | None:
     figure.savefig(buffer, format="png", facecolor=figure.get_facecolor())
     plt.close(figure)
     return buffer.getvalue()
+
+
+def pnl_text(
+    pnl: Decimal, currency: str, sol_price: Decimal | None, percent: Decimal | None
+) -> str:
+    """'+0.0508 SOL · +5.40 USDT · +49.5%' (SOL omitted without a SOL price)."""
+    parts = [f"{pnl / sol_price:+.4f} SOL"] if sol_price else []
+    parts.append(f"{pnl:+,.2f} {currency}")
+    if percent is not None:
+        parts.append(f"{percent:+.1f}%")
+    return " · ".join(parts)
 
 
 def _change(entry: Decimal, exit_price: Decimal | None) -> str:

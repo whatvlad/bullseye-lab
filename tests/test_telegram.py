@@ -252,3 +252,55 @@ def test_position_card_identifies_memecoin_and_shows_estimated_pnl() -> None:
     assert "Unrealized P&L: unknown" in stale_text
     assert "Execution mark unavailable or stale" in stale_text
     assert "+$50.00" not in stale_text
+
+
+def test_settings_view_shows_sol_tiers() -> None:
+    from dataclasses import replace as _replace
+
+    from memebot.storage.database.control import TradingControlSnapshot
+    from memebot.telegram.views import settings_view
+
+    control = TradingControlSnapshot(
+        entries_paused=False,
+        active_strategy_key="aggressive",
+        base_position_percent=Decimal(8),
+        max_position_percent=Decimal(8),
+        max_open_positions=3,
+        stop_loss_percent=Decimal(15),
+        take_profit_percent=Decimal(100),
+        trailing_stop_percent=Decimal(20),
+        max_holding_seconds=1800,
+    )
+    assert "defaults from .env" in settings_view(control)
+    tiers = _replace(
+        control,
+        sol_tier_small=Decimal("0.300000000"),
+        sol_tier_medium=Decimal("0.5"),
+        sol_tier_large=Decimal(1),
+    )
+    assert "0.3 SOL / 0.5 SOL / 1 SOL" in settings_view(tiers)
+
+
+def test_new_pair_signal_is_readable_without_score_evidence() -> None:
+    from memebot.telegram.notifications import new_pair_signal
+
+    event = StrategyDecisionCreated(
+        event_id=UUID(int=1),
+        provider="test",
+        source_event_at=datetime(2026, 10, 10, tzinfo=UTC),
+        mint="So11111111111111111111111111111111111111112",
+        strategy_key="aggressive",
+        strategy_version_id=UUID(int=2),
+        active_strategy=True,
+        action=StrategyDecisionAction.ENTER_CANDIDATE,
+        regime=StrategyRegime.EARLY_MOMENTUM,
+        risk_event_id=UUID(int=3),
+        score=ScoreResult(
+            final_score=Decimal("72.5"), component_completeness_percent=Decimal(80), components=()
+        ),
+        reasons=(),
+    )
+    text = new_pair_signal(event, ("creator_no_history",))
+    assert "NEW PAIR SIGNAL" in text and "Score 72" in text
+    assert "Token: So11111111111111111111111111111111111111112" in text  # name/links added later
+    assert "creator no history" in text and "curve n/a%" in text

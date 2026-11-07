@@ -250,3 +250,50 @@ async def test_refresh_retries_briefly_while_rpc_is_behind_the_stream_slot(behin
     assert (result.rpc_state == "healthy") is healthy
     if not healthy:
         assert result.data_quality == "current_atomic_refresh_failed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("supply,healthy", [(999_000_000_000_000, True), (10**15 + 1, False)])
+async def test_burned_supply_still_refreshes_with_standard_fee_supply(supply, healthy):
+    import base64
+
+    fresh, _ = await current_market()
+    _candidate, accounts, tx, _, _ = fixture()
+    mint = fresh.mint
+    raw = bytearray(base64.b64decode(accounts[mint]["data"][0]))
+    raw[36:44] = supply.to_bytes(8, "little")  # holders burned part of the supply
+    accounts = {
+        **accounts,
+        mint: {**accounts[mint], "data": [base64.b64encode(raw).decode(), "base64"]},
+    }
+    market = replace(fresh, rpc_state="degraded", execution_state=None)
+    result = await CurrentPaperMarketRefresher(Rpc(accounts, tx), for_exit=True).refresh(market)
+    assert (result.rpc_state == "healthy") is healthy
+    if healthy:
+        assert result.execution_state["supply"] == 10**15
+
+
+@pytest.mark.asyncio
+async def test_dead_curve_sell_liquidates_for_remaining_real_reserves():
+    fresh, _ = await current_market()
+    at = datetime.now(UTC)
+    state = fresh.execution_state
+    assert state is not None
+    # Everyone else sold: only 0.03 SOL of real reserves remain behind the virtual price.
+    dead = {**state, "curve": {**state["curve"], "real_quote_reserves": 30_000_000}}
+    market = replace(fresh, execution_state=dead)
+    tokens = Decimal(state["curve"]["virtual_token_reserves"] // 10)
+    with pytest.raises(ValueError, match="sell reserve cap"):
+        sell_quote(dead["curve"], int(tokens), dead["rates"])
+    sold = simulator().simulate_sell(
+        market,
+        quote(at),
+        token_amount_raw=tokens,
+        position_effect=PositionEffect.CLOSE,
+        exit_reason="stop_loss",
+        signal_at=at,
+        decision_at=at,
+        executed_at=at,
+    )
+    assert sold.fill is not None
+    assert sold.fill.gross_quote_amount_raw <= 30_000_000

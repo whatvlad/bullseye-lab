@@ -132,3 +132,21 @@ async def test_risk_governor_marks_real_equity_breach_as_circuit_breaker() -> No
     assert result.rejection_reason == "portfolio_daily_loss_limit_reached"
     assert result.circuit_breaker_tripped is True
     assert await governor.daily_loss_limit_reached(as_of=NOW) is True
+
+
+@pytest.mark.asyncio
+async def test_disabled_daily_loss_limit_never_pauses_or_budgets() -> None:
+    settings = Settings(
+        _env_file=None,
+        paper_daily_loss_limit_enabled=False,
+        paper_max_total_exposure_percent=Decimal(100),
+    )
+    registry = AsyncMock()
+    registry.paper_risk_snapshot.return_value = _state(
+        initial_cash=Decimal(100), open_cost_basis=Decimal(0), daily_realized_pnl=Decimal(-60)
+    )
+    governor = PortfolioRiskGovernor(settings, registry)
+    result = await governor.assess_entry(MINT, Decimal(40), as_of=NOW)
+    assert result.allowed and not result.circuit_breaker_tripped
+    assert result.remaining_entry_capacity == 100
+    assert not await governor.daily_loss_limit_reached(as_of=NOW)

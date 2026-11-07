@@ -155,7 +155,18 @@ def settings_view(control: TradingControlSnapshot) -> str:
         f"Stop loss: {control.stop_loss_percent}%\n"
         f"Take profit: {control.take_profit_percent}%\n"
         f"Trailing stop: {control.trailing_stop_percent}%\n"
-        f"Max holding: {control.max_holding_seconds}s"
+        f"Max holding: {control.max_holding_seconds}s\n"
+        f"SOL tiers (score <70 / 70-85 / 85+): {_sol_tiers_text(control)}"
+    )
+
+
+def _sol_tiers_text(control: TradingControlSnapshot) -> str:
+    if control.sol_tier_small is None:
+        return "defaults from .env (top tier = whole portfolio)"
+    return " / ".join(
+        f"{value.normalize():f} SOL"
+        for value in (control.sol_tier_small, control.sol_tier_medium, control.sol_tier_large)
+        if value is not None
     )
 
 

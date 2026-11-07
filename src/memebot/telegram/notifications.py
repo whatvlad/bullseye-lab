@@ -20,6 +20,7 @@ from memebot.events.models import (
 )
 from memebot.models.paper import PaperOrderStatus
 from memebot.models.strategy import StrategyDecisionAction
+from memebot.telegram.charts import pnl_text
 from memebot.telegram.history import coin_identity, coin_links
 from memebot.telegram.views import short_mint
 
@@ -41,6 +42,8 @@ class TelegramTradeNotifier:
         token_lookup: Callable[[str], Awaitable[dict[str, Any] | None]] | None = None,
         chart_lookup: Callable[[str, str], Awaitable[tuple[bytes | None, str] | None]]
         | None = None,
+        position_lookup: Callable[[str, str], Awaitable[dict[str, Any] | None]] | None = None,
+        fills_only: bool = False,
     ) -> None:
         self._bot = Bot(token=token)
         self._user_ids = user_ids
@@ -49,10 +52,13 @@ class TelegramTradeNotifier:
         )
         self._token_lookup = token_lookup
         self._chart_lookup = chart_lookup
+        self._position_lookup = position_lookup
+        self._fills_only = fills_only
         self._minimum_interval = minimum_interval_seconds
         self._duplicate_cooldown = duplicate_cooldown_seconds
         self._event_notifications_enabled = event_notifications_enabled
         self._recent: dict[str, float] = {}
+        self._partials: dict[str, PaperOrderCompleted] = {}
         self._task: asyncio.Task[None] | None = None
         self._logger = get_logger("memebot.telegram_notifications")
 
@@ -68,6 +74,10 @@ class TelegramTradeNotifier:
     def enqueue_event(self, event: DomainEvent) -> None:
         if not self._event_notifications_enabled:
             return
+        if self._fills_only and not (
+            isinstance(event, PaperOrderCompleted) and event.result.fill is not None
+        ):
+            return
         formatted = notification_for_event(event)
         if formatted is None:
             return
@@ -77,17 +87,22 @@ class TelegramTradeNotifier:
         if previous is not None and now - previous < self._duplicate_cooldown:
             return
         self._recent[dedupe_key] = now
-        chart = (
-            str(event.portfolio_id)
-            if isinstance(event, PaperOrderCompleted)
-            and event.result.fill is not None
-            and event.result.position_effect.value == "close"
-            else None
-        )
+        chart = None
+        if isinstance(event, PaperOrderCompleted) and event.result.fill is not None:
+            effect = event.result.position_effect.value
+            if effect == "close":
+                chart = str(event.portfolio_id)
+            elif effect == "partial_close" and self._position_lookup is not None:
+                self._partials[str(event.event_id)] = event
+                chart = f"partial:{event.event_id}"
         self._enqueue(message, getattr(event, "mint", None), chart)
 
     def enqueue_text(self, message: str) -> None:
         self._enqueue(message, None)
+
+    def enqueue_signal(self, message: str, mint: str) -> None:
+        """Signal-mode alert: always sent (ignores fills-only); name and links are added."""
+        self._enqueue(message, mint)
 
     def _enqueue(self, message: str, mint: str | None, chart: str | None = None) -> None:
         try:
@@ -107,7 +122,21 @@ class TelegramTradeNotifier:
             mint, message, chart = await self._queue.get()
             try:
                 photo = None
-                if chart and mint and self._chart_lookup:
+                if chart and chart.startswith("partial:") and mint and self._position_lookup:
+                    partial = self._partials.pop(chart.removeprefix("partial:"), None)
+                    try:
+                        summary = (
+                            await asyncio.wait_for(
+                                self._position_lookup(str(partial.portfolio_id), mint), 5
+                            )
+                            if partial is not None
+                            else None
+                        )
+                    except Exception:
+                        summary = None
+                    if partial is not None and summary is not None:
+                        message = partial_sell_message(partial, summary)
+                elif chart and mint and self._chart_lookup:
                     try:
                         rendered = await asyncio.wait_for(self._chart_lookup(chart, mint), 10)
                     except Exception:
@@ -245,6 +274,33 @@ def _decision_notification(event: StrategyDecisionCreated) -> tuple[str, str] | 
     return f"decision:{event.mint}:{event.action.value}", message
 
 
+def new_pair_signal(event: StrategyDecisionCreated, risk_warnings: tuple[str, ...] = ()) -> str:
+    """Manual-trading signal for a bonding-curve entry candidate (signal mode)."""
+    evidence: dict[str, object] = {
+        item.code: item.value for component in event.score.components for item in component.evidence
+    }
+
+    def number(code: str, digits: int = 1) -> str:
+        value = evidence.get(code)
+        try:
+            return f"{float(str(value)):.{digits}f}"
+        except (TypeError, ValueError):
+            return "n/a"
+
+    score = f"{event.score.final_score:.0f}" if event.score.final_score is not None else "n/a"
+    flags = ", ".join(_humanize(item) for item in risk_warnings) or "none"
+    return (
+        "🎯 NEW PAIR SIGNAL (bonding curve)\n\n"
+        f"Token: {event.mint}\n"
+        f"Score {score} · curve {number('bonding_progress_percent', 0)}% · "
+        f"{number('trade_count', 0)} trades and {number('price_change_percent')}% in 10 s · "
+        f"buy flow {number('flow_imbalance', 2)}\n"
+        f"Risk flags: {flags}\n\n"
+        "Fast 10-second spike. Auto-trading these lost ~8% per trade in tests: "
+        "only buy if the chart and narrative convince you."
+    )
+
+
 def _order_notification(event: PaperOrderCompleted) -> tuple[str, str]:
     result = event.result
     side = result.side.value.upper()
@@ -292,6 +348,31 @@ def _order_notification(event: PaperOrderCompleted) -> tuple[str, str]:
             f"Simulated execution only.{degraded}"
         )
     return f"order:{event.event_id}", message
+
+
+def partial_sell_message(event: PaperOrderCompleted, summary: dict[str, Any]) -> str:
+    fill = event.result.fill
+    assert fill is not None
+    currency = summary["currency"] or fill.portfolio_currency
+    remaining = Decimal(str(summary["remaining_tokens"]))
+    sold_percent = fill.token_amount_raw / (fill.token_amount_raw + remaining) * 100
+    entry = summary.get("entry_price")
+    change = f" at {(fill.actual_fill_price_raw / entry - 1) * 100:+.1f}%" if entry else ""
+    reason = _humanize(event.result.exit_reason) if event.result.exit_reason else "partial sell"
+    realized = Decimal(str(summary["realized_pnl"]))
+    sold_cost = fill.gross_portfolio_amount - fill.total_fee_portfolio - realized
+    locked = realized / sold_cost * 100 if sold_cost > 0 else None
+    sol_price = fill.quote_price_in_portfolio_currency
+    return (
+        f"🟡 {reason.capitalize()}\n\n"
+        f"Token: {event.mint}\n"
+        f"Sold: {sold_percent:.0f}% for {fill.gross_portfolio_amount:,.2f} {currency}{change}"
+        f" (fee {fill.total_fee_portfolio:,.2f})\n"
+        f"Locked profit: {pnl_text(realized, currency, sol_price, locked)}\n"
+        f"Still open: {100 - sold_percent:.0f}% · cost "
+        f"{Decimal(str(summary['remaining_cost_basis'])):,.2f} {currency}\n\n"
+        "Simulated execution only."
+    )
 
 
 def _humanize(value: str | None) -> str:

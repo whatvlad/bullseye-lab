@@ -213,6 +213,43 @@ class PaperHistoryRepository:
             open=open_position,
         )
 
+    async def open_position_summary(self, portfolio_id: str, mint: str) -> dict[str, Any] | None:
+        """Remaining size and locked profit of an open position, for partial-sell messages."""
+        async with self.sessions() as session:
+            position = await session.scalar(
+                select(PaperPositionRecord)
+                .where(
+                    PaperPositionRecord.portfolio_id == UUID(portfolio_id),
+                    PaperPositionRecord.mint == mint,
+                    PaperPositionRecord.status == "open",
+                )
+                .order_by(PaperPositionRecord.opened_at.desc())
+                .limit(1)
+            )
+            if position is None:
+                return None
+            buy = await session.scalar(
+                select(PaperOrderRecord)
+                .where(
+                    PaperOrderRecord.portfolio_id == position.portfolio_id,
+                    PaperOrderRecord.mint == mint,
+                    PaperOrderRecord.side == "buy",
+                    PaperOrderRecord.status == "filled",
+                    PaperOrderRecord.filled_at >= position.opened_at,
+                )
+                .order_by(PaperOrderRecord.filled_at)
+                .limit(1)
+            )
+            portfolio = await session.get(PaperPortfolioRecord, position.portfolio_id)
+        entry = (buy.fill_json or {}).get("actual_fill_price_raw") if buy else None
+        return dict(
+            currency=portfolio.currency if portfolio else "",
+            realized_pnl=position.realized_pnl,
+            remaining_cost_basis=position.remaining_cost_basis,
+            remaining_tokens=position.token_quantity_raw,
+            entry_price=Decimal(str(entry)) if entry else None,
+        )
+
     async def latest_closed_position_id(self, portfolio_id: str, mint: str) -> str | None:
         async with self.sessions() as session:
             identifier = await session.scalar(
@@ -290,6 +327,7 @@ class PaperHistoryRepository:
                     price=Decimal(str(fill["actual_fill_price_raw"])),
                     amount=Decimal(str(fill.get("gross_portfolio_amount") or 0)),
                     fees=Decimal(str(fill.get("total_fee_portfolio") or 0)),
+                    sol_price=Decimal(str(fill.get("quote_price_in_portfolio_currency") or 0)),
                 )
             )
         return dict(

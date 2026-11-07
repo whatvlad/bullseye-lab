@@ -35,30 +35,51 @@
   }
 
   const FIELDS = ["mcap_usd", "mcap_sol", "price_usd", "price_sol"];
+  const units = new WeakMap(); // chart holder -> { symbol, field }
 
-  function unit(chart) {
-    // Labels are unreliable (Dexscreener says "X/SOL (Market Cap)" while showing USD),
-    // so pick the unit whose value is nearest the chart's visible price scale.
-    const sample = latest?.open || latest?.fills?.[latest.fills.length - 1];
+  function visibleRange(chart) {
     try {
       const range = chart.getPanes()[0].getMainSourcePriceScale().getVisiblePriceRange();
-      if (sample && range && range.from > 0 && range.to > 0) {
-        const middle = Math.log10(Math.sqrt(range.from * range.to));
-        return FIELDS.reduce((best, field) =>
-          Math.abs(Math.log10(sample[field]) - middle) <
-          Math.abs(Math.log10(sample[best]) - middle)
-            ? field
-            : best
-        );
+      return range && range.from > 0 && range.to > 0 ? range : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function unit(holder, chart, symbol) {
+    // Labels are unreliable (Dexscreener says "X/SOL (Market Cap)" while showing USD),
+    // so the unit is picked from the price scale. It is then locked per chart: zooming
+    // or resizing changes the visible range and must not move the markers. It is only
+    // re-detected for a new symbol or when the locked unit is >10x outside the view
+    // (the user switched USD/SOL or price/market cap).
+    const sample = latest?.open || latest?.fills?.[latest.fills.length - 1];
+    const range = visibleRange(chart);
+    const locked = units.get(holder);
+    if (locked && locked.symbol === symbol) {
+      const value = sample?.[locked.field];
+      if (!range || !value || (value > range.from / 10 && value < range.to * 10)) {
+        return locked.field;
       }
-    } catch {}
-    let label = "";
-    try {
-      label = `${chart.symbol()} ${chart.symbolExt?.()?.description || ""}`;
-    } catch {}
-    const mcap = /MCAP|MARKET ?CAP|\bMC\b/i.test(label);
-    const usd = /USD/i.test(label) || !/SOL/i.test(label);
-    return `${mcap ? "mcap" : "price"}_${usd ? "usd" : "sol"}`;
+    }
+    let field = null;
+    if (sample && range) {
+      const middle = Math.log10(Math.sqrt(range.from * range.to));
+      field = FIELDS.reduce((best, item) =>
+        Math.abs(Math.log10(sample[item]) - middle) < Math.abs(Math.log10(sample[best]) - middle)
+          ? item
+          : best
+      );
+    } else {
+      let label = "";
+      try {
+        label = `${symbol} ${chart.symbolExt?.()?.description || ""}`;
+      } catch {}
+      const mcap = /MCAP|MARKET ?CAP|\bMC\b/i.test(label);
+      const usd = /USD/i.test(label) || !/SOL/i.test(label);
+      field = `${mcap ? "mcap" : "price"}_${usd ? "usd" : "sol"}`;
+    }
+    if (sample && range) units.set(holder, { symbol, field });
+    return field;
   }
 
   function money(value) {
@@ -83,11 +104,11 @@
   }
 
   async function redraw({ holder, chart }) {
-    const field = unit(chart);
     let symbol = "";
     try {
       symbol = chart.symbol();
     } catch {}
+    const field = unit(holder, chart, symbol);
     const key = JSON.stringify([field, symbol, latest]);
     const previous = drawn.get(holder);
     if (previous?.key === key) return;

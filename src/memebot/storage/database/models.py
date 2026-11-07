@@ -483,6 +483,10 @@ class TradingControlRecord(TimestampMixin, Base):
     take_profit_percent: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
     trailing_stop_percent: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
     max_holding_seconds: Mapped[int] = mapped_column(nullable=False)
+    # Telegram-set SOL tier sizes (sol_tiers mode); NULL keeps the .env defaults.
+    sol_tier_small: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    sol_tier_medium: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    sol_tier_large: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     updated_by_telegram_user_id: Mapped[int | None] = mapped_column(BigInteger)
 
 

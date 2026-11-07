@@ -189,6 +189,13 @@ class TelegramControlService:
             return await self._controls.update_risk(max_open_positions=int(value), user_id=user_id)
         raise ValueError("unknown_risk_setting")
 
+    async def update_sol_tiers(
+        self, small: Decimal, medium: Decimal, large: Decimal, *, user_id: int
+    ) -> TradingControlSnapshot:
+        return await self._controls.update_sol_tiers(
+            small=small, medium=medium, large=large, user_id=user_id
+        )
+
     async def update_sizing(
         self, base: Decimal, maximum: Decimal, *, user_id: int
     ) -> TradingControlSnapshot:

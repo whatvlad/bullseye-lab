@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import subprocess
 from decimal import Decimal
 
 from aiogram import Dispatcher, F, Router
@@ -9,6 +11,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardMarkup, Message
 
+from memebot.apps.bot_process import (
+    bot_running,
+    clear_stop_request,
+    request_stop,
+    start_bot_console,
+)
 from memebot.pulse.views import pulse_keyboard, pulse_view
 from memebot.telegram.access import AllowlistMiddleware
 from memebot.telegram.history import detail_keyboard, detail_view, history_keyboard, history_view
@@ -189,14 +197,41 @@ def build_dispatcher(
     @protected.callback_query(F.data.startswith("control:"))
     async def control_action(query: CallbackQuery) -> None:
         paused = (query.data or "") == "control:pause"
+        running = bot_running()
+        portfolio = await service.portfolio()
+        open_positions = len([] if portfolio is None else portfolio.get("positions") or [])
+        if not paused and not running and open_positions:
+            # The launcher refuses a new experiment while positions are open.
+            await query.answer(
+                f"⚠️ {open_positions} position(s) from the last run are still open. "
+                "Close them in Positions first, then press Start.",
+                show_alert=True,
+            )
+            return
         await service.set_paused(paused, user_id=query.from_user.id)
         payload = await service.dashboard()
         await _edit(query, dashboard_view(payload), dashboard_keyboard(paused))
-        await query.answer(
-            "New buys stopped; protective exits remain active"
-            if paused
-            else "Paper trading started"
-        )
+        if paused:
+            if not running:
+                await query.answer("New buys stopped (bot is not running)")
+            elif open_positions:
+                request_stop()
+                await query.answer(
+                    f"⚠️ New buys stopped. {open_positions} position(s) still open: the bot "
+                    "keeps watching exits and closes itself after the last one closes.",
+                    show_alert=True,
+                )
+            else:
+                request_stop()
+                await query.answer("Stopping the bot…")
+        elif running:
+            clear_stop_request()
+            await query.answer("Bot already running; new buys resumed")
+        else:
+            process = start_bot_console()
+            await query.answer("Starting the bot console…")
+            if await _report_failed_start(query, process):
+                await service.set_paused(True, user_id=query.from_user.id)
 
     @protected.callback_query(F.data.startswith("portfolio:new:"))
     async def create_portfolio(query: CallbackQuery) -> None:
@@ -311,7 +346,11 @@ def build_dispatcher(
             "risk:take_profit": "Send take-profit percent, for example: 50",
             "risk:trailing_stop": "Send trailing-stop percent, for example: 15",
             "risk:max_positions": "Send maximum open positions, for example: 10",
-            "sizing": "Send fixed position twice (score scaling is off): 8 8",
+            "sizing": (
+                "SOL tiers (score <70 / 70-85 / 85+): send three sizes in SOL, "
+                "for example: 0.3 0.5 1\n"
+                "Percent mode: send the fixed position twice, for example: 8 8"
+            ),
             "manual:buy": "Send token mint and paper amount: <mint> <amount>",
             "manual:sell": "Send token mint to close the full paper position.",
             "token:watchlist:add": "Send mint to add to the watchlist.",
@@ -359,8 +398,13 @@ async def _apply_input(
         return settings_view(await service.update_risk(field, parse_decimal(text), user_id=user_id))
     if action == "sizing":
         parts = text.replace(",", ".").split()
+        if len(parts) == 3:
+            small, medium, large = (Decimal(part) for part in parts)
+            return settings_view(
+                await service.update_sol_tiers(small, medium, large, user_id=user_id)
+            )
         if len(parts) != 2:
-            raise ValueError("expected_base_and_maximum_percent")
+            raise ValueError("expected_three_sol_sizes_or_two_percents")
         return settings_view(
             await service.update_sizing(Decimal(parts[0]), Decimal(parts[1]), user_id=user_id)
         )
@@ -414,3 +458,22 @@ async def _edit(
         except TelegramBadRequest as error:
             if "message is not modified" not in str(error).lower():
                 raise
+
+
+async def _report_failed_start(
+    query: CallbackQuery, process: subprocess.Popen[bytes], *, wait_seconds: float = 30.0
+) -> bool:
+    """A continuous run that exits within seconds failed to start (Docker off, open positions)."""
+    for _ in range(int(wait_seconds * 2)):
+        if process.poll() is not None:
+            break
+        await asyncio.sleep(0.5)
+    else:
+        return False
+    if isinstance(query.message, Message):
+        await query.message.answer(
+            f"⚠️ The bot stopped right after start (exit code {process.returncode}). "
+            "Is Docker running? Details: analysis\\paper_run.err.log",
+            parse_mode=None,
+        )
+    return True

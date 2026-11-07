@@ -374,6 +374,9 @@ class RiskAssessor:
         if context.creator_rejections:
             warnings.append("creator_has_rejected_markets")
             points += Decimal(5)
+        if context.creator_launches <= 1 and not context.creator_graduations:
+            # Flag only: no earlier launches seen for this dev wallet. Never a reject.
+            warnings.append("creator_no_history")
         if context.largest_early_buyer_share_percent is None:
             evidence.append(
                 _unknown(

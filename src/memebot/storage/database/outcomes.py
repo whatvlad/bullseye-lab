@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -568,11 +568,16 @@ def _as_utc(value: datetime) -> datetime:
 
 
 async def _required_token(session: AsyncSession, mint: str) -> TokenRecord:
+    cache = session.info.get("token_cache")  # set by TokenRegistry.handle_many
+    if cache is not None and mint in cache:
+        return cast(TokenRecord, cache[mint])
     token = await session.scalar(
         select(TokenRecord).where(TokenRecord.network == "solana", TokenRecord.mint == mint)
     )
     if token is None:
         raise RuntimeError("outcome_token_not_found")
+    if cache is not None:
+        cache[mint] = token
     return token
 
 

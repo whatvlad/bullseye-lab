@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -117,3 +118,35 @@ def test_bad_liquidity_rejects_instead_of_shrinking_below_ten() -> None:
     _, (amount, result) = simulate(liquidity_sol=1)
     assert result.status == PaperOrderStatus.REJECTED
     assert amount == 10
+
+
+def test_sol_tiers_size_by_score_and_never_exceed_cash() -> None:
+    async def publish(event):
+        return 1
+
+    bot = PaperTradingEngine(
+        Settings(_env_file=None, paper_sizing_mode="sol_tiers"),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        publish,
+        entry_thresholds={"balanced": Decimal(55)},
+    )
+    sol = Decimal(100)  # USDT per SOL
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(60), sol, CONTROL) == Decimal(10)  # 0.1 SOL
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(75), sol, CONTROL) == Decimal(50)  # 0.5 SOL
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(90), sol, CONTROL) == Decimal(97)  # all
+    poor = PortfolioSnapshot(UUID(int=1), "USDT", Decimal(100), Decimal(30), Decimal(0), 0)
+    assert bot._sol_tier_size(poor, Decimal(75), sol, CONTROL) == Decimal("29.1")
+    # Telegram-set tiers replace the .env sizes; the top tier becomes a fixed SOL amount.
+    tiers = replace(
+        CONTROL,
+        sol_tier_small=Decimal("0.3"),
+        sol_tier_medium=Decimal("0.5"),
+        sol_tier_large=Decimal("0.8"),
+    )
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(60), sol, tiers) == Decimal(30)
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(75), sol, tiers) == Decimal(50)
+    assert bot._sol_tier_size(PORTFOLIO, Decimal(90), sol, tiers) == Decimal(80)
+    assert bot._sol_tier_size(poor, Decimal(90), sol, tiers) == Decimal("29.1")

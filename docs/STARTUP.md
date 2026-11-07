@@ -27,6 +27,14 @@ This window also serves your paper fills to the chart-markers browser extension
 
 ## 3. Start the bot (window 2)
 
+Easiest: Telegram → dashboard → **▶️ Start trading**. It opens the bot console with the
+log-file command below (and refuses to open a second bot). The console shows
+"observing" plus one line per filled buy/sell. **⏹ Stop trading** stops new buys and
+closes the bot; if positions are still open, the bot keeps watching exits and closes
+itself after the last one closes. Pressing Start again in the meantime cancels that stop.
+
+Manual start (still works):
+
 ```powershell
 .venv\Scripts\python.exe analysis\run_operational_paper.py --continuous
 ```

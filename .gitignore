@@ -221,3 +221,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local env variants (keep the template)
+.env.*
+!.env.example
+
+# Analysis output: data stays local, only scripts go to git.
+# Files already tracked before these rules stay tracked.
+analysis/**/*.json
+analysis/**/*.jsonl
+analysis/**/*.csv
+analysis/**/*.txt
+analysis/**/*.svg
+analysis/**/*.zip
+analysis/logs/
+analysis/pumpswap/
+analysis/graduation_paper/
+analysis/dataset/*
+!analysis/dataset/*.py
+docs/audit-data-*.json

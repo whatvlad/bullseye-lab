@@ -124,3 +124,19 @@ def sell_quote(curve: dict[str, Any], tokens: int, rates: dict[str, Any]) -> dic
         "creator_fee": creator,
         "net_output": gross - protocol - creator,
     }
+
+
+def capped_sell_quote(curve: dict[str, Any], tokens: int, rates: dict[str, Any]) -> dict[str, int]:
+    """Sell everything for the curve's remaining real SOL (dead-curve liquidation)."""
+    gross = int(curve["real_quote_reserves"])
+    if tokens <= 0 or gross <= 0:
+        raise ValueError("sell reserve cap")
+    protocol, creator = fee(gross, rates["protocol_bps"]), fee(gross, rates["creator_bps"])
+    return {
+        "token_input": tokens,
+        "gross_output": gross,
+        "protocol_fee": protocol,
+        "creator_fee": creator,
+        "net_output": gross - protocol - creator,
+        "reserve_capped": 1,
+    }

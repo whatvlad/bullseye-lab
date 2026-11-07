@@ -57,6 +57,7 @@ def _data():
                 price=Decimal("0.61"),
                 amount=Decimal("30.25"),
                 fees=Decimal("0.5"),
+                sol_price=Decimal(100),
             ),
         ],
         prices=prices,
@@ -69,7 +70,7 @@ def test_trade_card_shows_pnl_peak_drawdown_hold_and_exit_reason():
     assert summary["worst_percent"] == Decimal(-40)
     caption = chart_caption(_data())
     assert "🔴 SuperIntelligence Fund ($SIF) · closed" in caption
-    assert "P&L: -19.36 USDT (-38.4%)" in caption
+    assert "P&L: -0.1936 SOL · -19.36 USDT · -38.4%" in caption
     assert "Entry → exit: -39.0% (fill price)" in caption
     assert "Best / worst while held: +50.0% / -40.0%" in caption
     assert "Held: 2m 17s" in caption and "Exit: stop-loss" in caption
@@ -331,3 +332,34 @@ async def test_chart_markers_convert_fills_to_chart_units_by_mint_or_curve():
         assert await repo.chart_markers("Unknown111111111111111111111111111111") is None
     finally:
         await db.dispose()
+
+
+def test_partial_sell_message_shows_sold_share_locked_profit_and_remainder():
+    from types import SimpleNamespace
+
+    from memebot.telegram.notifications import partial_sell_message
+
+    fill = SimpleNamespace(
+        token_amount_raw=Decimal(653946946041),
+        gross_portfolio_amount=Decimal("11.09"),
+        total_fee_portfolio=Decimal("0.21"),
+        actual_fill_price_raw=Decimal("0.0001552083"),
+        portfolio_currency="USDT",
+        quote_price_in_portfolio_currency=Decimal("106.3"),
+    )
+    event = SimpleNamespace(
+        mint=MINT, result=SimpleNamespace(fill=fill, exit_reason="partial_take_profit")
+    )
+    text = partial_sell_message(
+        event,
+        {
+            "currency": "USDT",
+            "realized_pnl": Decimal("5.39506579"),
+            "remaining_cost_basis": Decimal("5.48382209"),
+            "remaining_tokens": Decimal(653946946041),
+            "entry_price": Decimal("0.0000764588"),
+        },
+    )
+    assert "Sold: 50% for 11.09 USDT at +103.0% (fee 0.21)" in text
+    assert "Locked profit: +0.0508 SOL · +5.40 USDT · +98.4%" in text
+    assert "Still open: 50% · cost 5.48 USDT" in text

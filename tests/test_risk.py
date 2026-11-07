@@ -304,3 +304,34 @@ def test_rules_accept_independent_rpc_market_validation_for_third_party_stream()
     assert "market_validation" not in result.critical_unknowns
     evidence = next(item for item in result.evidence if item.code == "market_validation_state")
     assert evidence.value == MarketValidationState.VERIFIED_MARKET_DATA.value
+
+
+def test_dev_without_history_is_flagged_but_never_rejected() -> None:
+    from dataclasses import replace
+
+    facts = OnChainRiskFacts(
+        observed_at=NOW,
+        source_slot=100,
+        mint_state=MintAccountState(
+            mint_authority=None, supply=1000, decimals=6, initialized=True, freeze_authority=None
+        ),
+        mint_error=None,
+        top1_holder_percent=Decimal("5"),
+        top5_holder_percent=Decimal("20"),
+        top10_holder_percent=Decimal("30"),
+        holder_error=None,
+        circulating_supply_raw=900,
+        creator_holding_percent=Decimal("1"),
+        creator_holding_error=None,
+        available_quote_reserves_raw=100,
+        liquidity_error=None,
+        excluded_market_token_accounts=1,
+    )
+    new_dev = RiskAssessor(_policy()).assess(_context(), facts)
+    assert "creator_no_history" in new_dev.warnings
+    assert new_dev.allowed is True and not new_dev.hard_reject_reasons
+    known = RiskAssessor(_policy()).assess(
+        replace(_context(), creator_launches=4, creator_graduations=1), facts
+    )
+    assert "creator_no_history" not in known.warnings
+    assert known.risk_score == new_dev.risk_score  # the flag adds no risk points

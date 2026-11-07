@@ -136,6 +136,7 @@ class TrustDimension(StrEnum):
     STREAM_COVERAGE = "STREAM_COVERAGE"
 
 
+_STANDARD_SUPPLY = 1_000_000_000_000_000
 CURRENT_DIMENSIONS = frozenset(
     {
         TrustDimension.RESERVE_STATE,
@@ -355,13 +356,16 @@ class CandidateProofService:
             if curve_fields["quote_mint"] not in {NATIVE_SOL_MINT, WRAPPED_SOL_MINT}:
                 raise ProofFailure("FAIL_IDENTITY", "quote asset unsupported")
             mint_fields = decode_mint_account(data(mint_acc))
-            if mint_fields.supply != 1_000_000_000_000_000:
+            # Holders can burn, so the live mint supply may shrink below the launch
+            # supply. Standard (non-Mayhem) fees use the fixed 1B supply in the
+            # official SDK (getFee: ONE_BILLION_SUPPLY), so a burn changes nothing here.
+            if (
+                curve_fields["token_total_supply"] != _STANDARD_SUPPLY
+                or mint_fields.supply > _STANDARD_SUPPLY
+            ):
                 raise ProofFailure("FAIL_FEE", "standard SDK supply invariant unsupported")
             validate_token_extensions(data(mint_acc), mint_acc["owner"], mint=True)
-            if (
-                not mint_fields.initialized
-                or mint_fields.supply != curve_fields["token_total_supply"]
-            ):
+            if not mint_fields.initialized or mint_fields.supply <= 0:
                 raise ProofFailure("FAIL_IDENTITY", "mint supply mismatch")
             vault = associated_address(curve, mint, mint_acc["owner"])
             vault_acc = accounts[vault]
@@ -410,7 +414,7 @@ class CandidateProofService:
                 cached = (decoded[0][0], decoded[1][0])
                 self.config_cache[version] = cached
             global_state, fee_config = cached
-            rates = select_fees(global_state, fee_config, curve_fields, mint_fields.supply)
+            rates = select_fees(global_state, fee_config, curve_fields, _STANDARD_SUPPLY)
             binding = {
                 "mint": mint,
                 "curve": curve,
@@ -436,7 +440,7 @@ class CandidateProofService:
                 "fee_config": fee_config,
                 "vault_amount": token.amount,
                 "curve_lamports": curve_acc["lamports"],
-                "supply": mint_fields.supply,
+                "supply": _STANDARD_SUPPLY,
                 "synchronization": "ONE_RPC_BANK_CONTEXT",
             }
             if proof is None:

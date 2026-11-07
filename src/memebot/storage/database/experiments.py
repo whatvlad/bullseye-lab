@@ -145,6 +145,14 @@ class ExperimentRepository:
                     "take_profit_percent": str(control.take_profit_percent),
                     "trailing_stop_percent": str(control.trailing_stop_percent),
                     "max_holding_seconds": control.max_holding_seconds,
+                    **{
+                        key: None if value is None else str(value)
+                        for key, value in (
+                            ("sol_tier_small", control.sol_tier_small),
+                            ("sol_tier_medium", control.sol_tier_medium),
+                            ("sol_tier_large", control.sol_tier_large),
+                        )
+                    },
                 },
                 "strategy": strategy_snapshot,
             }

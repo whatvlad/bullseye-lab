@@ -112,6 +112,14 @@ class Settings(BaseSettings):
     telegram_notification_queue_size: int = Field(default=200, ge=10, le=5000)
     telegram_notification_minimum_interval_seconds: float = Field(default=1.0, ge=0.1, le=60)
     telegram_notification_duplicate_cooldown_seconds: float = Field(default=60.0, ge=0, le=3600)
+    # True: Telegram only shows filled buys/sells (no decisions, rejections or waits).
+    telegram_notify_fills_only: bool = False
+    # True: no automatic paper entries; every entry candidate (new pairs) and every real
+    # graduation becomes a Telegram signal for manual trading. Exits of open positions run.
+    signal_mode: bool = False
+    # Sound played on this PC when a paper buy fills (mp3/wav); empty disables it.
+    buy_sound_path: Path | None = None
+    buy_sound_volume_percent: int = Field(default=100, ge=0, le=100)
     # Loopback port for the chart-markers browser extension; 0 disables it.
     chart_markers_port: int = Field(default=8765, ge=0, le=65535)
     x_bearer_token: SecretStr | None = None
@@ -131,6 +139,14 @@ class Settings(BaseSettings):
     paper_max_open_positions: int = Field(default=8, ge=1, le=1000)
     paper_max_total_exposure_percent: Decimal = Field(default=Decimal("40"), gt=0, le=100)
     paper_daily_loss_limit_percent: Decimal = Field(default=Decimal("10"), gt=0, le=100)
+    # False disables the daily loss pause and the daily loss risk budget.
+    paper_daily_loss_limit_enabled: bool = True
+    # "sol_tiers": size entries 0.1 SOL / 0.5 SOL / whole portfolio by strategy score.
+    paper_sizing_mode: Literal["percent", "sol_tiers"] = "percent"
+    paper_sol_tier_small: Decimal = Field(default=Decimal("0.1"), gt=0)
+    paper_sol_tier_medium: Decimal = Field(default=Decimal("0.5"), gt=0)
+    paper_sol_tier_medium_score: Decimal = Field(default=Decimal("70"), ge=0, le=100)
+    paper_sol_tier_full_score: Decimal = Field(default=Decimal("85"), ge=0, le=100)
     paper_open_risk_budget_percent: Decimal | None = Field(default=None, gt=0, le=100)
     paper_stop_loss_risk_reserve_percent: Decimal = Field(default=Decimal("30"), gt=0, le=100)
     paper_consecutive_loss_limit: int = Field(default=6, ge=1, le=100)
@@ -357,6 +373,14 @@ class Settings(BaseSettings):
             "paper_max_open_positions": self.paper_max_open_positions,
             "paper_max_total_exposure_percent": str(self.paper_max_total_exposure_percent),
             "paper_daily_loss_limit_percent": str(self.paper_daily_loss_limit_percent),
+            "paper_daily_loss_limit_enabled": self.paper_daily_loss_limit_enabled,
+            "paper_sizing_mode": self.paper_sizing_mode,
+            "paper_sol_tiers": [
+                str(self.paper_sol_tier_small),
+                str(self.paper_sol_tier_medium),
+                str(self.paper_sol_tier_medium_score),
+                str(self.paper_sol_tier_full_score),
+            ],
             "paper_stop_loss_risk_reserve_percent": str(self.paper_stop_loss_risk_reserve_percent),
             "paper_consecutive_loss_limit": self.paper_consecutive_loss_limit,
             "paper_loss_cooldown_seconds": self.paper_loss_cooldown_seconds,

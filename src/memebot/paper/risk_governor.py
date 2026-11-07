@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from memebot.core.config import Settings
 from memebot.storage.database.registry import TokenRegistry
@@ -44,7 +45,7 @@ class PortfolioRiskGovernor:
         daily_loss_limit = (
             state.initial_cash * self._settings.paper_daily_loss_limit_percent / Decimal(100)
         )
-        if daily_pnl <= -daily_loss_limit:
+        if self._settings.paper_daily_loss_limit_enabled and daily_pnl <= -daily_loss_limit:
             return EntryRiskAssessment(
                 False,
                 "portfolio_daily_loss_limit_reached",
@@ -57,14 +58,15 @@ class PortfolioRiskGovernor:
         projected_daily_pnl = (
             state.daily_realized_pnl - (state.open_cost_basis + requested_amount) * reserve_fraction
         )
-        risk_budget = (
-            state.initial_cash
-            * (
-                self._settings.paper_open_risk_budget_percent
-                or self._settings.paper_daily_loss_limit_percent
-            )
-            / Decimal(100)
+        budget_percent = self._settings.paper_open_risk_budget_percent or (
+            self._settings.paper_daily_loss_limit_percent
+            if self._settings.paper_daily_loss_limit_enabled
+            else None
         )
+        if budget_percent is None:
+            # No daily loss gate: only exposure, cooldowns and reentry rules apply.
+            return self._other_gates(state, capacity, as_of, entry_capacity=capacity)
+        risk_budget = state.initial_cash * budget_percent / Decimal(100)
         risk_capacity = max(
             Decimal(0),
             (risk_budget + state.daily_realized_pnl) / reserve_fraction
@@ -77,6 +79,18 @@ class PortfolioRiskGovernor:
                 "portfolio_daily_loss_risk_budget_exhausted",
                 capacity,
             )
+        return self._other_gates(
+            state, capacity, as_of, entry_capacity=min(capacity, risk_capacity)
+        )
+
+    def _other_gates(
+        self,
+        state: Any,
+        capacity: Decimal,
+        as_of: datetime,
+        *,
+        entry_capacity: Decimal,
+    ) -> EntryRiskAssessment:
         if (
             state.consecutive_losses >= self._settings.paper_consecutive_loss_limit
             and state.last_closed_at is not None
@@ -92,13 +106,11 @@ class PortfolioRiskGovernor:
             > as_of
         ):
             return EntryRiskAssessment(False, "mint_reentry_cooldown_active", capacity)
-        return EntryRiskAssessment(
-            True, None, capacity, remaining_entry_capacity=min(capacity, risk_capacity)
-        )
+        return EntryRiskAssessment(True, None, capacity, remaining_entry_capacity=entry_capacity)
 
     async def daily_loss_limit_reached(self, *, as_of: datetime) -> bool:
         state = await self._registry.paper_risk_snapshot("", as_of=as_of)
-        if state is None:
+        if state is None or not self._settings.paper_daily_loss_limit_enabled:
             return False
         daily_pnl = state.daily_realized_pnl + state.unrealized_pnl
         limit = state.initial_cash * self._settings.paper_daily_loss_limit_percent / Decimal(100)

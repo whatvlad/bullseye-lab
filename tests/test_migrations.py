@@ -37,4 +37,4 @@ def test_initial_migration_upgrades_empty_database(tmp_path) -> None:
         "pending_paper_actions",
         "experiment_runs",
     } <= tables
-    assert revision == ("20261003_0017",)
+    assert revision == ("20261009_0018",)

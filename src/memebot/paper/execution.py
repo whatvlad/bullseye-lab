@@ -21,7 +21,7 @@ from memebot.providers.price.base import QuotePrice
 from .fees import effective_venue_fee_bps, pump_market_cap_sol
 from .models import ExecutionMarketSnapshot
 from .price_safety import price_metadata
-from .standard_math import buy_exact_input, sell_quote
+from .standard_math import buy_exact_input, capped_sell_quote, sell_quote
 
 _BPS = Decimal(10_000)
 _LAMPORTS_PER_SOL = Decimal(1_000_000_000)
@@ -344,7 +344,25 @@ class PaperFillSimulator:
                 if side == PaperOrderSide.BUY
                 else sell_quote(state["curve"], tokens or 0, state["rates"])
             )
-        except (ValueError, KeyError):
+        except ValueError as error:
+            if not (
+                side == PaperOrderSide.SELL
+                and not migration_exit
+                and str(error) == "sell reserve cap"
+            ):
+                return _rejected(
+                    side, max(requested, Decimal("0.00000001")), "exact_quote_unavailable", reason
+                )
+            # After a dump the curve can hold less real SOL than the virtual price owes
+            # this position. A real seller gets at most what is left, so the paper sell
+            # liquidates for the remaining real reserves instead of staying stuck open.
+            try:
+                quote = capped_sell_quote(state["curve"], tokens or 0, state["rates"])
+            except ValueError:
+                return _rejected(
+                    side, max(requested, Decimal("0.00000001")), "exact_quote_unavailable", reason
+                )
+        except KeyError:
             return _rejected(
                 side, max(requested, Decimal("0.00000001")), "exact_quote_unavailable", reason
             )

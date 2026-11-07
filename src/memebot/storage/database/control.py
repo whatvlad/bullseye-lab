@@ -29,6 +29,9 @@ class TradingControlSnapshot:
     take_profit_percent: Decimal
     trailing_stop_percent: Decimal
     max_holding_seconds: int
+    sol_tier_small: Decimal | None = None
+    sol_tier_medium: Decimal | None = None
+    sol_tier_large: Decimal | None = None
 
 
 class ControlRepository:
@@ -158,6 +161,25 @@ class ControlRepository:
             record = await _required_control(session)
             record.base_position_percent = base_position_percent
             record.max_position_percent = max_position_percent
+            record.updated_by_telegram_user_id = user_id
+            await session.flush()
+            return _snapshot(record)
+
+    async def update_sol_tiers(
+        self,
+        *,
+        small: Decimal,
+        medium: Decimal,
+        large: Decimal,
+        user_id: int,
+    ) -> TradingControlSnapshot:
+        if not Decimal(0) < small <= medium <= large <= Decimal(1000):
+            raise ValueError("expected_increasing_sol_sizes")
+        async with self._sessions() as session, session.begin():
+            record = await _required_control(session)
+            record.sol_tier_small = small
+            record.sol_tier_medium = medium
+            record.sol_tier_large = large
             record.updated_by_telegram_user_id = user_id
             await session.flush()
             return _snapshot(record)
@@ -293,6 +315,9 @@ def _snapshot(record: TradingControlRecord) -> TradingControlSnapshot:
         take_profit_percent=record.take_profit_percent,
         trailing_stop_percent=record.trailing_stop_percent,
         max_holding_seconds=record.max_holding_seconds,
+        sol_tier_small=record.sol_tier_small,
+        sol_tier_medium=record.sol_tier_medium,
+        sol_tier_large=record.sol_tier_large,
     )
 
 

@@ -1,6 +1,8 @@
 """Bounded use of the existing PAPER worker; never creates live orders."""
 import asyncio
 import argparse
+import contextlib
+from types import SimpleNamespace
 import json
 from datetime import datetime, UTC
 from decimal import Decimal
@@ -8,6 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from memebot.apps.bot_process import clear_stop_request, stop_requested
 from memebot.apps.worker import run_discovery_worker
 from memebot.core.config import Settings
 from memebot.core.logging import configure_logging
@@ -17,6 +20,7 @@ from memebot.storage.database.control import ControlRepository
 from memebot.storage.database.engine import Database, create_database_engine
 from memebot.storage.database.experiments import ExperimentRepository
 from memebot.storage.database.models import PaperPositionRecord
+from pumpswap_recorder import run as run_graduation_watcher
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / 'analysis/paper_run_state.json'
@@ -37,6 +41,7 @@ async def main(run_seconds: float | None = 900, *, resume_existing: bool = False
         STATE.write_text(json.dumps(state, indent=2, default=str), encoding='utf-8')
 
     async def ready():
+        clear_stop_request()  # Lock is held here; a stale request must not stop this run.
         await controls.set_paused(True, user_id=0)
         old = await experiments.active()
         if resume_existing:
@@ -69,11 +74,59 @@ async def main(run_seconds: float | None = 900, *, resume_existing: bool = False
         await controls.set_paused(False, user_id=0)
         print(json.dumps({'paper_run': 'observing', 'name': exp['name']}, default=str), flush=True)
 
+    async def open_position_count() -> int:
+        from uuid import UUID
+        async with db.sessions() as session:
+            return len(list(await session.scalars(select(PaperPositionRecord).where(
+                PaperPositionRecord.portfolio_id == UUID(state['portfolio_id']),
+                PaperPositionRecord.status == 'open'))))
+
+    async def wait_for_telegram_stop():
+        # Telegram "Stop trading" pauses buys and drops a stop request; shut down
+        # only once no position is open, so exits keep being watched until then.
+        announced = None
+        while True:
+            await asyncio.sleep(1)
+            if not stop_requested() or not state.get('portfolio_id'):
+                announced = None
+                continue
+            try:
+                remaining = await open_position_count()
+            except Exception:  # A DB hiccup must never stop the bot; ask again next second.
+                continue
+            if remaining == 0:
+                clear_stop_request()
+                print('Stop requested from Telegram: shutting down.', flush=True)
+                return
+            if remaining != announced:
+                announced = remaining
+                print(f'Stop requested from Telegram: waiting for {remaining} open position(s) to close.', flush=True)
+
     instance_conflict = False
     try:
         async with asyncio.timeout(run_seconds + 300 if run_seconds is not None else None):
-            await run_discovery_worker(settings, run_seconds=run_seconds, on_ready=ready)
-        state['status'] = 'observation_complete'
+            worker = asyncio.create_task(run_discovery_worker(settings, run_seconds=run_seconds, on_ready=ready))
+            watcher = asyncio.create_task(wait_for_telegram_stop())
+            # One system: graduated coins (PumpSwap) are watched inside the same run.
+            graduates = asyncio.create_task(run_graduation_watcher(SimpleNamespace(
+                hours=1, max_pools=5, hourly_mb=170, paper=True, signals=settings.signal_mode,
+                quiet=True)))
+            try:
+                done, _ = await asyncio.wait({worker, watcher}, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                watcher.cancel()
+                graduates.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await graduates
+                if not worker.done():
+                    worker.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await worker
+            if worker in done:
+                worker.result()
+                state['status'] = 'observation_complete'
+            else:
+                state['status'] = 'stopped_from_telegram'
     except InstanceAlreadyRunning:
         instance_conflict = True
         print('PAPER/discovery is already running. Existing worker and entry controls unchanged.')

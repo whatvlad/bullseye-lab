@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
@@ -8,6 +9,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from memebot.core.clock import utc_now
 from memebot.core.config import Settings
@@ -16,6 +18,7 @@ from memebot.core.instance import instance_lock
 from memebot.core.logging import get_logger
 from memebot.core.metrics import EventMetrics
 from memebot.core.sampling import sampled_mint
+from memebot.core.sound import play_sound
 from memebot.eligibility import paper_candidate_rejection, research_rejection
 from memebot.events.bus import EventBus
 from memebot.events.models import (
@@ -37,6 +40,7 @@ from memebot.intelligence.features.models import RollingWindowMetrics
 from memebot.intelligence.ollama_policy import OllamaPaperPolicy
 from memebot.intelligence.risk.collector import SolanaRiskCollector
 from memebot.intelligence.risk.coordinator import RiskAssessmentCoordinator
+from memebot.intelligence.risk.insider import InsiderShadow, WalletFunderResolver
 from memebot.intelligence.risk.rules import RiskAssessor, RiskPolicy
 from memebot.intelligence.wallet_projection import DurableWalletProjector
 from memebot.models.market import MarketLifecycle, MarketValidationState
@@ -65,11 +69,13 @@ from memebot.storage.database.paper_history import PaperHistoryRepository
 from memebot.storage.database.pending import PendingPaperActionRepository
 from memebot.storage.database.registry import TokenRegistry
 from memebot.storage.database.wallets import WalletIntelligenceRepository
+from memebot.storage.database.write_behind import WriteBehindWriter
 from memebot.strategies.presets import initial_strategy_presets
 from memebot.strategies.runner import MultiStrategyRunner
 from memebot.telegram.charts import closed_trade_card
 from memebot.telegram.notifications import (
     TelegramTradeNotifier,
+    new_pair_signal,
     tracked_wallet_notification,
 )
 
@@ -255,13 +261,30 @@ async def _run_discovery_worker(
         ),
     )
     prefilter_rejection_reasons: dict[str, tuple[str, ...]] = {}
+    trade_writer = WriteBehindWriter(registry.handle_many)
+    # Log-only "bubble map" facts on a dedicated RPC client (own rate limit/circuit).
+    insider_rpc = JsonRpcSolanaClient(
+        str(settings.solana_rpc_http_url), timeout_seconds=settings.solana_rpc_timeout_seconds
+    )
+    insider = InsiderShadow(insider_rpc, WalletFunderResolver(insider_rpc))
+    recent_trade_ids: OrderedDict[UUID, None] = OrderedDict()
     paper_trade_queue: dict[str, tuple[TokenTrade, MarketFeatureSnapshotCreated | None]] = {}
     paper_trade_ready = asyncio.Event()
     metrics = EventMetrics()
 
+    signalled_mints: set[str] = set()  # signal mode: one alert per coin per run
+    risk_warnings: dict[str, tuple[str, ...]] = {}
+
     async def process_event(event: DomainEvent) -> None:
-        inserted = await registry.handle(event)
-        if not inserted:
+        if isinstance(event, TokenTrade):
+            # Trades are the bulk of the feed: decide first, store in background batches.
+            if event.event_id in recent_trade_ids:
+                return
+            recent_trade_ids[event.event_id] = None
+            if len(recent_trade_ids) > 200_000:
+                recent_trade_ids.popitem(last=False)
+            trade_writer.submit(event)
+        elif not await registry.handle(event):
             return
         if executed_cache is not None:
             executed_cache.observe(event)
@@ -289,7 +312,7 @@ async def _run_discovery_worker(
             }
         ):
             wallet_projector.wake()
-        if inserted and isinstance(event, TokenDiscovered):
+        if isinstance(event, TokenDiscovered):
             logger.info(
                 "token_discovered",
                 mint=event.mint,
@@ -297,7 +320,7 @@ async def _run_discovery_worker(
                 launch_venue=event.launch_venue.value,
                 source_slot=event.source_slot,
             )
-        elif inserted and isinstance(event, ProviderHealthUpdated):
+        elif isinstance(event, ProviderHealthUpdated):
             if event.state.value in {"degraded", "disconnected"}:
                 feature_engine.invalidate_price_history()
             logger.info(
@@ -317,6 +340,8 @@ async def _run_discovery_worker(
                         provider=event.provider,
                     )
         elif isinstance(event, TokenRiskAssessed):
+            risk_warnings[event.mint] = tuple(event.result.warnings)
+            insider.request(event.mint, curve_address(event.mint))
             logger.info(
                 "token_risk_assessed",
                 mint=event.mint,
@@ -384,6 +409,20 @@ async def _run_discovery_worker(
                         )
                 await bus.publish(decision)
         elif isinstance(event, StrategyDecisionCreated):
+            if (
+                settings.signal_mode
+                and event.active_strategy
+                and event.action.value == "enter_candidate"
+                and event.mint not in signalled_mints
+            ):
+                signalled_mints.add(event.mint)
+                print(
+                    f"{utc_now().astimezone():%H:%M:%S}  SIGNAL new pair  {event.mint}", flush=True
+                )
+                if telegram_notifier is not None:
+                    telegram_notifier.enqueue_signal(
+                        new_pair_signal(event, risk_warnings.get(event.mint, ())), event.mint
+                    )
             if event.active_strategy and event.action.value == "enter_candidate":
                 if not rpc.available:
                     await controls.pause_automatically()
@@ -431,6 +470,8 @@ async def _run_discovery_worker(
                     )
             if telegram_notifier is not None:
                 telegram_notifier.enqueue_event(event)
+            # Paper execution reads the latest stored trade for market context.
+            await trade_writer.wait_written(trade_writer.submitted, 2.0)
             await paper_engine.on_decision(event)
             if (
                 event.active_strategy
@@ -446,6 +487,12 @@ async def _run_discovery_worker(
                         shadow_reasons=alpha_snapshot.shadow_reasons,
                     )
         elif isinstance(event, PaperOrderCompleted):
+            if (
+                settings.buy_sound_path is not None
+                and event.result.fill is not None
+                and event.result.side.value == "buy"
+            ):
+                play_sound(settings.buy_sound_path, settings.buy_sound_volume_percent)
             if event.result.fill is not None:
                 if event.result.position_effect.value == "open":
                     feature_engine.pin_mint(event.mint)
@@ -462,6 +509,9 @@ async def _run_discovery_worker(
                 rejection_reason=event.result.rejection_reason,
                 exit_reason=event.result.exit_reason,
             )
+            if event.result.fill is not None:
+                # The console shows only fills; everything else stays in the log file.
+                print(console_fill_line(event), flush=True)
             if (
                 isinstance(provider, (PumpPortalDiscoveryProvider, PumpDiscoveryProvider))
                 and event.result.status.value == "filled"
@@ -613,6 +663,8 @@ async def _run_discovery_worker(
     executed_cache_task: asyncio.Task[None] | None = None
     executed_watch_task: asyncio.Task[None] | None = None
     executed_processor_task: asyncio.Task[None] | None = None
+    trade_writer_task: asyncio.Task[None] | None = None
+    insider_task: asyncio.Task[None] | None = None
 
     def wallet_activity_ready(activity: dict[str, Any]) -> None:
         if telegram_notifier is not None and settings.telegram_tracked_wallet_notifications_enabled:
@@ -644,6 +696,7 @@ async def _run_discovery_worker(
                 )
                 event, feature = paper_trade_queue.pop(next_mint)
                 try:
+                    await trade_writer.wait_written(trade_writer.submitted, 2.0)
                     await paper_engine.on_trade(event, feature)
                 except Exception:
                     logger.exception("paper_trade_processing_failed", mint=event.mint)
@@ -682,6 +735,11 @@ async def _run_discovery_worker(
                         primary_rpc=rpc.metrics(),
                         exit_rpc=exit_rpc.metrics(),
                         feature_state_evictions=feature_engine.evicted_token_states,
+                        trade_write_behind={
+                            **trade_writer.metrics,
+                            "pending": trade_writer.pending,
+                            "written": trade_writer.written,
+                        },
                         native_instructions=(
                             dict(provider.native_instruction_metrics)
                             if isinstance(provider, PumpDiscoveryProvider)
@@ -710,6 +768,8 @@ async def _run_discovery_worker(
 
     try:
         await database.healthcheck()
+        trade_writer_task = asyncio.create_task(trade_writer.run(), name="trade-write-behind")
+        insider_task = asyncio.create_task(insider.run(), name="insider-shadow")
         paper_trade_task = asyncio.create_task(process_paper_trades(), name="paper-trade-execution")
         await registry.ensure_strategy_configurations(strategy_configurations)
         await controls.ensure(
@@ -863,7 +923,12 @@ async def _run_discovery_worker(
             except TimeoutError:
                 logger.info("discovery_worker_time_limit_reached", run_seconds=run_seconds)
     finally:
+        if trade_writer_task is not None and not trade_writer_task.done():
+            # Store already-processed trades before shutting down.
+            await trade_writer.flush(10)
         for task in (
+            trade_writer_task,
+            insider_task,
             pending_sweeper_task,
             wallet_backfill_task,
             wallet_projection_task,
@@ -879,6 +944,8 @@ async def _run_discovery_worker(
             *(
                 task
                 for task in (
+                    trade_writer_task,
+                    insider_task,
                     pending_sweeper_task,
                     wallet_backfill_task,
                     wallet_projection_task,
@@ -902,6 +969,7 @@ async def _run_discovery_worker(
         await provider.close()
         await rpc.close()
         await exit_rpc.close()
+        await insider_rpc.close()
         await database.dispose()
 
 
@@ -928,6 +996,8 @@ def _telegram_notifier(
         event_notifications_enabled=settings.telegram_trade_notifications_enabled,
         token_lookup=registry.token_identity if registry is not None else None,
         chart_lookup=None if history is None else partial(closed_trade_card, history),
+        position_lookup=None if history is None else history.open_position_summary,
+        fills_only=settings.telegram_notify_fills_only,
     )
 
 
@@ -958,3 +1028,21 @@ def _risk_prefilter_evaluation(
     if flow_imbalance < settings.risk_prefilter_min_flow_imbalance:
         reasons.append("flow_imbalance_below_minimum")
     return not reasons, tuple(reasons), window
+
+
+def console_fill_line(event: PaperOrderCompleted) -> str:
+    """One short stdout line per filled paper order, e.g. for the bot console."""
+    result = event.result
+    fill = result.fill
+    assert fill is not None
+    side = result.side.value.upper()
+    effect = {"open": "", "partial_close": " partial", "close": ""}.get(
+        result.position_effect.value, ""
+    )
+    reason = result.exit_reason or ("entry" if side == "BUY" else "exit")
+    sol = fill.gross_quote_amount_raw / 1_000_000_000
+    return (
+        f"{fill.filled_at.astimezone():%H:%M:%S}  {side}{effect}  "
+        f"{sol:.4f} SOL ({fill.gross_portfolio_amount:,.2f} {fill.portfolio_currency})  "
+        f"{event.mint}  {reason}"
+    )

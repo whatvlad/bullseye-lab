@@ -162,10 +162,13 @@ class PaperTradingEngine:
         if portfolio is None:
             await self._cancel_pending(pending_action, "active_paper_portfolio_not_found")
             return
-        if control.entries_paused:
+        if control.entries_paused or self._settings.signal_mode:
+            reason = (
+                "signal_mode_no_auto_entries" if self._settings.signal_mode else "entries_paused"
+            )
             market = await self._registry.paper_market_context(event.mint, as_of=utc_now())
-            await self._publish_rejection(event, portfolio, market, "entries_paused")
-            await self._cancel_pending(pending_action, "entries_paused")
+            await self._publish_rejection(event, portfolio, market, reason)
+            await self._cancel_pending(pending_action, reason)
             return
         momentum = next((item for item in event.score.components if item.name == "momentum"), None)
         if (
@@ -268,6 +271,8 @@ class PaperTradingEngine:
             await self._publish_rejection(event, portfolio, market, "quote_price_unavailable")
             await self._cancel_pending(pending_action, "quote_price_unavailable")
             return
+        if self._settings.paper_sizing_mode == "sol_tiers":
+            requested = self._sol_tier_size(portfolio, score, quote_price.price, control)
         decision_at = utc_now()
         signal_at = (
             await self._registry.feature_observed_at(event.feature_event_id)
@@ -819,7 +824,10 @@ class PaperTradingEngine:
         refreshed_fill = self._exit_diagnostics(position, refreshed_mark.fill, control, trace)
         net_return = Decimal(refreshed_fill.execution_diagnostics["net_executable_pnl_percent"])
         # Re-evaluate soft exits on execution-time state. No stale trigger is a forced sell.
-        if emergency or self._ollama_policy is None:
+        # A triggered stop-loss sells immediately; a brief bounce does not cancel it.
+        if intent.reason == "stop_loss":
+            pass
+        elif emergency or self._ollama_policy is None:
             intent = exit_intent(
                 position,
                 mark_price,
@@ -1081,6 +1089,30 @@ class PaperTradingEngine:
         )
         target = max(Decimal(0), capital) * allocation / Decimal(100)
         return min(target, portfolio.cash_balance).quantize(Decimal("0.00000001"))
+
+    def _sol_tier_size(
+        self,
+        portfolio: PortfolioSnapshot,
+        score: Decimal,
+        sol_price: Decimal,
+        control: TradingControlSnapshot,
+    ) -> Decimal:
+        """Small / medium / large SOL size by strategy score (paper_sizing_mode).
+
+        Telegram-set tiers win; otherwise .env sizes, with the whole portfolio on top.
+        """
+        # Keep a little cash for fees so a full-portfolio buy is not rejected for them.
+        available = portfolio.cash_balance * Decimal("0.97")
+        small = control.sol_tier_small or self._settings.paper_sol_tier_small
+        medium = control.sol_tier_medium or self._settings.paper_sol_tier_medium
+        if score >= self._settings.paper_sol_tier_full_score:
+            large = control.sol_tier_large
+            target = available if large is None else large * sol_price
+        elif score >= self._settings.paper_sol_tier_medium_score:
+            target = medium * sol_price
+        else:
+            target = small * sol_price
+        return max(Decimal(0), min(target, available)).quantize(Decimal("0.00000001"))
 
     def _liquidity_adjusted_buy(
         self,

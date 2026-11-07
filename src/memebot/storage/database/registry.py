@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
@@ -92,40 +92,7 @@ class TokenRegistry:
                 async with session.begin():
                     if await session.get(DomainEventRecord, event.event_id) is not None:
                         return False
-                    session.add(
-                        DomainEventRecord(
-                            event_id=event.event_id,
-                            event_type=event.event_type.value,
-                            schema_version=event.schema_version,
-                            provider=event.provider,
-                            source_event_at=event.source_event_at,
-                            provider_received_at=event.provider_received_at,
-                            ingested_at=event.ingested_at,
-                            correlation_id=event.correlation_id,
-                            source_sequence=event.source_sequence,
-                            source_signature=event.source_signature,
-                            source_slot=event.source_slot,
-                            payload=event.model_dump(mode="json"),
-                        )
-                    )
-                    if isinstance(event, TokenDiscovered):
-                        await self._apply_discovery(session, event)
-                    elif isinstance(event, TokenLifecycleChanged):
-                        await self._apply_lifecycle(session, event)
-                    elif isinstance(event, TokenTrade):
-                        await self._apply_trade(session, event)
-                    elif isinstance(event, MarketFeatureSnapshotCreated):
-                        await self._apply_feature_snapshot(session, event)
-                    elif isinstance(event, TokenRiskAssessed):
-                        await self._apply_risk_assessment(session, event)
-                    elif isinstance(event, StrategyDecisionCreated):
-                        await self._apply_strategy_decision(session, event)
-                    elif isinstance(event, PaperOrderCompleted):
-                        await self._apply_paper_order(session, event)
-                    elif isinstance(event, ProviderHealthUpdated):
-                        await self._apply_provider_health(session, event)
-                    if self._outcome_recorder is not None:
-                        await self._outcome_recorder.handle_in_session(session, event)
+                    await self._store(session, event)
             except IntegrityError:
                 # Another worker may have committed this deterministic event first.
                 async with self._sessions() as verification_session:
@@ -134,6 +101,56 @@ class TokenRegistry:
                     return False
                 raise
         return True
+
+    async def handle_many(self, events: list[DomainEvent]) -> None:
+        """Store a batch in one transaction; on any conflict fall back to `handle`."""
+        async with self._sessions() as session:
+            session.info["token_cache"] = {}
+            try:
+                async with session.begin():
+                    for event in events:
+                        await self._store(session, event)
+                return
+            except IntegrityError:
+                pass
+        for event in events:
+            await self.handle(event)
+
+    async def _store(self, session: AsyncSession, event: DomainEvent) -> None:
+        session.add(
+            DomainEventRecord(
+                event_id=event.event_id,
+                event_type=event.event_type.value,
+                schema_version=event.schema_version,
+                provider=event.provider,
+                source_event_at=event.source_event_at,
+                provider_received_at=event.provider_received_at,
+                ingested_at=event.ingested_at,
+                correlation_id=event.correlation_id,
+                source_sequence=event.source_sequence,
+                source_signature=event.source_signature,
+                source_slot=event.source_slot,
+                payload=event.model_dump(mode="json"),
+            )
+        )
+        if isinstance(event, TokenDiscovered):
+            await self._apply_discovery(session, event)
+        elif isinstance(event, TokenLifecycleChanged):
+            await self._apply_lifecycle(session, event)
+        elif isinstance(event, TokenTrade):
+            await self._apply_trade(session, event)
+        elif isinstance(event, MarketFeatureSnapshotCreated):
+            await self._apply_feature_snapshot(session, event)
+        elif isinstance(event, TokenRiskAssessed):
+            await self._apply_risk_assessment(session, event)
+        elif isinstance(event, StrategyDecisionCreated):
+            await self._apply_strategy_decision(session, event)
+        elif isinstance(event, PaperOrderCompleted):
+            await self._apply_paper_order(session, event)
+        elif isinstance(event, ProviderHealthUpdated):
+            await self._apply_provider_health(session, event)
+        if self._outcome_recorder is not None:
+            await self._outcome_recorder.handle_in_session(session, event)
 
     async def _apply_discovery(
         self,
@@ -540,6 +557,7 @@ class TokenRegistry:
                     snapshot["trading_control"] = {
                         key: str(getattr(control, key))
                         if key.endswith("percent")
+                        or (key.startswith("sol_tier") and getattr(control, key) is not None)
                         else getattr(control, key)
                         for key in (
                             "active_strategy_key",
@@ -550,6 +568,9 @@ class TokenRegistry:
                             "take_profit_percent",
                             "trailing_stop_percent",
                             "max_holding_seconds",
+                            "sol_tier_small",
+                            "sol_tier_medium",
+                            "sol_tier_large",
                         )
                     }
                 if strategy is not None:
@@ -1163,6 +1184,9 @@ class TokenRegistry:
 
     @staticmethod
     async def _get_or_create_token(session: AsyncSession, mint: str) -> TokenRecord:
+        cache = session.info.get("token_cache")
+        if cache is not None and mint in cache:
+            return cast(TokenRecord, cache[mint])
         token = await session.scalar(
             select(TokenRecord).where(
                 TokenRecord.network == "solana",
@@ -1173,6 +1197,8 @@ class TokenRegistry:
             token = TokenRecord(mint=mint)
             session.add(token)
             await session.flush()
+        if cache is not None:
+            cache[mint] = token
         return token
 
     @staticmethod
